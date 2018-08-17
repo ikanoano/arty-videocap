@@ -5,13 +5,13 @@ module MJPG_ENCODER (
   input   wire          clk,
   input   wire          rst,
 
-  input   wire          cvalid,
+  input   wire          pvalid,
   input   wire          hsync,
   input   wire          vsync,
   input   wire[24-1:0]  ycbcr,
 
   output  wire          bsvalid,
-  output  wire[16-1:0]  bsdata
+  output  wire[32-1:0]  bsdata
 );
 
 localparam [2:0]
@@ -32,30 +32,30 @@ always @(posedge clk) begin
   endcase
 end
 
-reg [11-1:0]  width, height, y, x;  // 0 <= . < 2047
+reg [12-1:0]  width, height, y, x_from_valid;  // 0 <= . < 2047
+wire[8-1:0]   h_mcu = width[3+:8];
 reg           hvalid;
 wire          hvalidsync = hvalid & hsync;
 always @(posedge clk) begin
   if(rst) {width, height} <= 0;
   else case(state)
-    S_COUNTWIDTH:   if(cvalid)      width <= width+1;
-    S_COUNTHEIGHT:  if(hvalidsync)  height<= height+1;
+    S_COUNTWIDTH:   width   <= width  + pvalid;
+    S_COUNTHEIGHT:  height  <= height + hvalidsync;
   endcase
 
-  x <= (rst || hsync) ? 11'd0 : x + cvalid;
-  y <= (rst || vsync) ? 11'd0 : y + hvalidsync;
+  x_from_valid  <= (rst || hsync) ? -1 : x_from_valid + (pvalid | hvalid);
+  y             <= (rst || vsync) ? -1 : y + hvalidsync;
 
   hvalid <=
-    rst   ? 1'b0 :
-    hsync ? 1'b0 :
-    cvalid? 1'b1 : hvalid;
+    rst     ? 1'b0 :
+    hsync   ? 1'b0 :
+    pvalid  ? 1'b1 : hvalid;
 end
 
 
-// FIXME: width from 16 to 32
 reg [6-1:0]   elen;
 reg [32-1:0]  edata;
-wire[4-1:0]   bsrest;
+wire[3-1:0]   bsrest;
 BITSTREAM bs (
   .clk(clk),
   .rst(rst),
@@ -67,22 +67,32 @@ BITSTREAM bs (
 );
 
 // generate bitstream
-localparam LEN_FH = 171;
+localparam
+  LEN_FH      = 171,
+  DCT_TH_Y    = 28,
+  DCT_TH_C    = 6,
+  NOBS_CYCLE  = 8;
 reg [8-1:0]   idx_fh;
 reg [8-1:0]   footer_header[0:LEN_FH-1];
 reg [6-1:0]   elen_fh;
 reg [32-1:0]  edata_fh;
+reg           ereq_master;
+reg [6-1:0]   ereq_cnt;
 initial $readmemh("fh.hex", footer_header, 0, LEN_FH-1);
 always @(posedge clk) begin
-  if(rst) {elen_fh, edata_fh, idx_fh} <= 0;
+  if(rst) {elen_fh, edata_fh, idx_fh, ereq_master} <= 0;
   else begin
     if(vsync) begin // byte alignment
-      elen_fh <= bsrest;
-      edata_fh<= 32'hffff;
+      elen_fh <= {3'd0, bsrest};
+      edata_fh<= 32'hxxxxxxff;
       idx_fh  <= 0;
+      if(ereq_master) begin
+        $display("encoding component");
+        $finish();
+      end
     end else if(idx_fh<LEN_FH) begin // output footer and header
       elen_fh <= 8;
-      edata_fh<= footer_header[idx_fh];
+      edata_fh<= {24'hxxxxxx, footer_header[idx_fh]};
       idx_fh  <= idx_fh + 1;
       case (idx_fh)
         8'd143: footer_header[idx_fh] <= {5'd0, height[8+:3]};
@@ -92,39 +102,64 @@ always @(posedge clk) begin
       endcase
     end else begin  // output entropy-coded image data
       elen_fh <= 0;
+      edata_fh<= 32'hxxxxxxxx;
+      idx_fh  <= 0;
 
-      //FIXME: this is dummy!!!
-      e_x_mcu[0] <= x[3+:8];
-      e_x_mcu[1] <= x[3+:8];
-      e_x_mcu[2] <= x[3+:8];
-      ereq_ce[0]  <= x[4];
-      ereq_ce[1]  <= x[5];
-      ereq_ce[2]  <= x[6];
+      if(0<y && y<=height && y[0+:3]==0 && x_from_valid==0) begin
+        ereq_master <= 1;
+      end else if(e_x_mcu[2] >= h_mcu) begin
+        ereq_master <= 0;
+      end
     end
+
   end
+
+  if(ereq_master) begin
+    ereq_cnt    <= ereq_cnt < DCT_TH_Y+DCT_TH_C*2+NOBS_CYCLE ? ereq_cnt+1 : 0;
+    ereq_ce[0]  <=                                ereq_cnt<DCT_TH_Y;
+    ereq_ce[1]  <= DCT_TH_Y         <=ereq_cnt && ereq_cnt<DCT_TH_Y+DCT_TH_C;
+    ereq_ce[2]  <= DCT_TH_Y+DCT_TH_C<=ereq_cnt && ereq_cnt<DCT_TH_Y+DCT_TH_C*2;
+    e_x_mcu[0]  <= e_x_mcu[0] + (ereq_cnt==DCT_TH_Y             ? 1 : 0);
+    e_x_mcu[1]  <= e_x_mcu[1] + (ereq_cnt==DCT_TH_Y+DCT_TH_C    ? 1 : 0);
+    e_x_mcu[2]  <= e_x_mcu[2] + (ereq_cnt==DCT_TH_Y+DCT_TH_C*2  ? 1 : 0);
+  end else begin
+    ereq_cnt    <= 0;
+    ereq_ce[0]  <= 0;
+    ereq_ce[1]  <= 0;
+    ereq_ce[2]  <= 0;
+    e_x_mcu[0]  <= 0;
+    e_x_mcu[1]  <= 0;
+    e_x_mcu[2]  <= 0;
+  end
+  // NOTE:
+  // ereq_master はe_x_mcu[2]に依存しているため本来デアサートされるべき
+  // タイミングからデアサートされるまでに１サイクルの遅延がある。
+  // この際invalidなbitstreamを出力しないように、e_x_mcu[2]が最大になった直後
+  // にNOBS_CYCLEを設けてこの期間ereq_ceをデアサートする。
+
 end
 
 
 reg [8-1:0] pix_y, pix_b, pix_r;
-reg         rcvalid, rvsync;
+reg         rpvalid, rvsync;
 always @(posedge clk) {pix_y, pix_b, pix_r} <= ycbcr;
-always @(posedge clk) rcvalid <= cvalid;
+always @(posedge clk) rpvalid <= pvalid;
 always @(posedge clk) rvsync  <= vsync;
 
 reg [8-1:0]   e_x_mcu[0:2];
 reg           ereq_ce[0:2];
 wire[6-1:0]   elen_ce[0:2];
 wire[32-1:0]  edata_ce[0:2];
-COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(28)) yenc (
+COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(DCT_TH_Y)) yenc (
   .clk(clk),
   .rst(rst),
   .page(y[3]),
 
-  .valid(rcvalid),
+  .valid(rpvalid),
   .pix(pix_y),
-  .x_mcu(x[3+:8]),      // assign from -1 to h_mcu + 1
+  .x_mcu(x_from_valid[3+:8]),      // assign from -1 to h_mcu + 1
   .y_in_mcu(y[0+:3]),
-  .x_in_mcu(x[0+:3]),
+  .x_in_mcu(x_from_valid[0+:3]),
   .vsync(rvsync),
 
   .e_x_mcu(e_x_mcu[0]),   // must be valid before bsreq is asserted
@@ -133,16 +168,16 @@ COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(28)) yenc (
   .edata(edata_ce[0])
 );
 
-COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(6)) cenc[1:0] (
+COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(DCT_TH_C)) cenc[1:0] (
   .clk(clk),
   .rst(rst),
-  .page(x[3]),
+  .page(y[3]),
 
-  .valid(rcvalid),
+  .valid(rpvalid),
   .pix({pix_r, pix_b}),
-  .x_mcu(x[3+:8]),      // assign from -1 to h_mcu + 1
+  .x_mcu(x_from_valid[3+:8]), // from -1 to h_mcu + 1
   .y_in_mcu(y[0+:3]),
-  .x_in_mcu(x[0+:3]),
+  .x_in_mcu(x_from_valid[0+:3]),
   .vsync(rvsync),
 
   .e_x_mcu({e_x_mcu[2], e_x_mcu[1]}),   // must be valid before bsreq is asserted
