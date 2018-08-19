@@ -24,7 +24,7 @@ reg [4-1:0] r;
 reg [4-1:0] c;
 wire[8-1:0] o;
 
-DCT_COSTABLE #(26, 7) dc (
+DCT_COSTABLE #(15, 7) dc (
   r[0+:3],
   c[0+:3],
   o
@@ -32,10 +32,12 @@ DCT_COSTABLE #(26, 7) dc (
 
 initial begin
   $display("start");
-  for (r = 0; r < 8; r = r + 1)
-  for (c = 0; c < 8; c = c + 1) begin
-    @(posedge clk)
-    $display("r=%d, c=%d, o=%d", r, c, o);
+  for (r = 0; r < 8; r = r + 1) begin
+    for (c = 0; c < 8; c = c + 1) begin
+      @(posedge clk)
+      $write("%d ", $signed(o));
+    end
+    $display("");
   end
   repeat(10) @(posedge clk);
   $display("end");

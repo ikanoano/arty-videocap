@@ -238,7 +238,7 @@ localparam real PI      = 3.141592653589793;
 
 wire[8-1:0] tbl[0:64-1];
 localparam  v = //y
-  DCT_IDX< 0 ? 0          :
+  DCT_IDX< 1 ? 0          :
   DCT_IDX< 3 ? DCT_IDX-1  :
   DCT_IDX< 6 ? 5-DCT_IDX  :
   DCT_IDX<10 ? DCT_IDX-6  :
@@ -246,8 +246,8 @@ localparam  v = //y
   DCT_IDX<21 ? DCT_IDX-15 :
   DCT_IDX<28 ? 27-DCT_IDX :
   DCT_IDX<36 ? DCT_IDX-28 : 32'hxxxxxxxx;
-localparam  u = //y
-  DCT_IDX< 0 ? 0   :
+localparam  u = //x
+  DCT_IDX< 1 ? 0   :
   DCT_IDX< 3 ? 1-v :
   DCT_IDX< 6 ? 2-v :
   DCT_IDX<10 ? 3-v :
