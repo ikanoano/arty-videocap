@@ -135,7 +135,7 @@ always @(posedge clk) begin
   // ereq_master はe_x_mcu[2]に依存しているため本来デアサートされるべき
   // タイミングからデアサートされるまでに１サイクルの遅延がある。
   // この際invalidなbitstreamを出力しないように、e_x_mcu[2]が最大になった直後
-  // にNOBS_CYCLEを設けてこの期間ereq_ceをデアサートする。
+  // にはNOBS_CYCLEを設けてこの期間ereq_ceをデアサートする。
 
 end
 
@@ -168,7 +168,7 @@ COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(DCT_TH_Y)) yenc (
   .edata(edata_ce[0])
 );
 
-COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(DCT_TH_C)) cenc[1:0] (
+COMPONENT_ENCODER #(.IS_Y(0), .DCT_TH(DCT_TH_C)) cenc[1:0] (
   .clk(clk),
   .rst(rst),
   .page(y[3]),
