@@ -90,8 +90,8 @@ generate genvar gi;
 
     // assertion
     initial if(QSHIFT<QSHIFTMIN) begin $display("invalid Q"); $finish(); end
-    always @(posedge clk) if(valid && x_mcu>=248) begin
-      $display("invelid x_mcu"); $finish();
+    always @(posedge clk) if(valid && x_mcu>=253) begin
+      $display("invalid x_mcu %x", x_mcu); $finish();
     end
     always @(posedge clk) if(valid && storeP && x_in_mcu==7) begin
       $display("bad timing to read memo"); $finish();
