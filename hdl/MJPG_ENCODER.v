@@ -14,37 +14,21 @@ module MJPG_ENCODER (
   output  wire[32-1:0]  bsdata
 );
 
-localparam [2:0]
-  S_WAIT4HSYNC  = 3'd0,
-  S_COUNTWIDTH  = 3'd1,
-  S_WAIT4VSYNC  = 3'd2,
-  S_COUNTHEIGHT = 3'd3,
-  S_OUTPUTJPEG  = 3'd4;
-reg [2:0] state;
-always @(posedge clk) begin
-  if(rst) state <= S_WAIT4HSYNC;
-  else case(state)
-    S_WAIT4HSYNC  : if(hsync) state <= S_COUNTWIDTH;
-    S_COUNTWIDTH  : if(hsync) state <= S_WAIT4VSYNC;
-    S_WAIT4VSYNC  : if(vsync) state <= S_COUNTHEIGHT;
-    S_COUNTHEIGHT : if(vsync) state <= S_OUTPUTJPEG;
-    default       : state <= state;
-  endcase
-end
+reg last_vsync, pulse_vsync;  // NOTE: pulse_vsync has 1 cycle latency
+always @(posedge clk) last_vsync  <= vsync;
+always @(posedge clk) pulse_vsync <= {last_vsync, vsync} == 2'b01;
 
-reg [12-1:0]  width, height, y, x_from_valid;  // 0 <= . < 2047
+reg [12-1:0]  width, height, y, x, x_from_valid;  // 0 <= . < 2047
 wire[8-1:0]   h_mcu = width[3+:8];
 reg           hvalid;
-wire          hvalidsync = hvalid & hsync;
 always @(posedge clk) begin
-  if(rst) {width, height} <= 0;
-  else case(state)
-    S_COUNTWIDTH:   width   <= width  + pvalid;
-    S_COUNTHEIGHT:  height  <= height + hvalidsync;
-  endcase
-
   x_from_valid  <= (rst || hsync) ? -1 : x_from_valid + (pvalid | hvalid);
-  y             <= (rst || vsync) ? -1 : y + hvalidsync;
+  x             <= (rst || hsync) ?  0 : x + pvalid;
+  y             <= (rst || vsync) ?  0 : y + (hvalid & hsync);
+
+  width         <= rst ? 0 : (width <x  ? x : width);
+  height        <= rst ? 0 : (height<y  ? y : height);
+  //$display("y=%d, x=%d", y, x);
 
   hvalid <=
     rst     ? 1'b0 :
@@ -78,19 +62,23 @@ reg [6-1:0]   elen_fh;
 reg [32-1:0]  edata_fh;
 reg           ereq_master;
 reg [6-1:0]   ereq_cnt;
+reg [8-1:0]   e_x_mcu[0:2];
+reg           ereq_ce[0:2];
 initial $readmemh("fh.hex", footer_header, 0, LEN_FH-1);
 always @(posedge clk) begin
   if(rst) {elen_fh, edata_fh, idx_fh, ereq_master} <= 0;
   else begin
-    if(vsync) begin // byte alignment
+    if(pulse_vsync) begin // byte alignment
+      $display("byte alignment and start to output header");
       elen_fh <= {3'd0, bsrest};
       edata_fh<= 32'hxxxxxxff;
       idx_fh  <= 0;
       if(ereq_master) begin
-        $display("encoding component");
+        $display("invalid encoding timing for component");
         $finish();
       end
     end else if(idx_fh<LEN_FH) begin // output footer and header
+      $display("header %d", idx_fh);
       elen_fh <= 8;
       edata_fh<= {24'hxxxxxx, footer_header[idx_fh]};
       idx_fh  <= idx_fh + 1;
@@ -103,9 +91,10 @@ always @(posedge clk) begin
     end else begin  // output entropy-coded image data
       elen_fh <= 0;
       edata_fh<= 32'hxxxxxxxx;
-      idx_fh  <= 0;
+      idx_fh  <= idx_fh;
 
       if(0<y && y<=height && y[0+:3]==0 && x_from_valid==0) begin
+        $display("start to output body");
         ereq_master <= 1;
       end else if(e_x_mcu[2] >= h_mcu) begin
         ereq_master <= 0;
@@ -146,8 +135,6 @@ always @(posedge clk) {pix_y, pix_b, pix_r} <= ycbcr;
 always @(posedge clk) rpvalid <= pvalid;
 always @(posedge clk) rvsync  <= vsync;
 
-reg [8-1:0]   e_x_mcu[0:2];
-reg           ereq_ce[0:2];
 wire[6-1:0]   elen_ce[0:2];
 wire[32-1:0]  edata_ce[0:2];
 COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(DCT_TH_Y)) yenc (
