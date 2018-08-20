@@ -118,7 +118,7 @@ always @(posedge clk) begin
       idx_fh  <= idx_fh;
 
       if(0<y && y<=height && y[0+:3]==0 && x_from_valid==0) begin
-        $display("start to output body");
+        //$display("start to output body");
         ereq_master <= 1;
       end else if(e_x_mcu[2] >= h_mcu) begin
         ereq_master <= 0;

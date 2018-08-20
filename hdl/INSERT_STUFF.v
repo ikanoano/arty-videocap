@@ -16,12 +16,6 @@ module INSERT_STUFF (
 );
 localparam[8-1:0] zero = 0;
 
-always @(posedge clk) if(!rst) begin
-  if(enqueue) $display("in : 0x%x (nostuff:0x%x)", wdata, wdata_nostuff);
-  if(dequeue) $display("out: 0x%x (roffset=%d)", rdata, roffset);
-  if(dequeue&&stuff)  $display("insert stuff");
-end
-
 wire[4-1:0] ready4;
 reg         last_fold_ready4;
 assign      ready = last_fold_ready4 & |ready4;

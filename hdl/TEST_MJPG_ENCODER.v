@@ -88,15 +88,16 @@ always @(posedge clk) begin
   end
 end
 
-//always @(negedge me.cenc[1].bsvalid[4]) begin
-//  if(!rst) begin
-//    $display("negedge bsvalid4");
-//    $finish();
-//  end
-//end
+always @(negedge me.cenc[1].bsvalid[4]) begin
+  if(0 && !rst) begin
+    $display("negedge bsvalid4");
+    $finish();
+  end
+end
 
+generate if(0) begin
 always @(posedge clk) begin
-  if(!rst && me.yenc.gen_dsp[0].storeP) begin
+  if(0 && !rst && me.yenc.gen_dsp[0].storeP) begin
     $write("sum_acc[0][%x]<=%d (y=%d) ",
         me.yenc.gen_dsp[0].raddrA,
         $signed(me.yenc.gen_dsp[0].P),
@@ -112,13 +113,15 @@ always @(posedge clk) begin
     $display("");
   end
 end
+end endgenerate
 
 integer yyy = 0;
 always @(posedge clk) begin
   if(me.yenc.vsync) begin
     yyy = 0;
   end else begin
-    if(0 && me.yenc.valid && me.yenc.x_in_mcu==0 && me.yenc.x_mcu==0) begin
+    if(me.yenc.valid && me.yenc.y_in_mcu==0 && me.x_from_valid==0) $write("\n");
+    if(me.yenc.valid && me.yenc.x_in_mcu==0 && me.yenc.x_mcu==0) begin
       $write("\n%x %d ", me.yenc.pix, yyy);
       $fflush(32'h8000_0001);
       yyy = yyy+1;
@@ -127,10 +130,10 @@ always @(posedge clk) begin
   end
 end
 
-always @(posedge me.yenc.ereq) $display("yereq _/");
-always @(posedge clk) if(me.yenc.eob) $display("yereq eob");
-always @(negedge me.yenc.ereq) $display("yereq \\_");
-always @(posedge clk) if(me.yenc.elen>0) begin
+always @(posedge me.yenc.ereq) if(0) $display("yereq _/");
+always @(posedge clk) if(0 && me.yenc.eob) $display("yereq eob");
+always @(negedge me.yenc.ereq) if(0) $display("yereq \\_");
+always @(posedge clk) if(0 && me.yenc.elen>0) begin
   $display("elen=%d, edata=%x, bitlen=%d, runlen=%d, val=%b, bsvalid=%b, is_dc=%b",
     me.yenc.elen,
     me.yenc.edata,
@@ -142,19 +145,30 @@ always @(posedge clk) if(me.yenc.elen>0) begin
   );
 end
 
-always @(posedge clk) if(me.yenc.bsvalid[4] && !me.yenc.is_dc[4])
+always @(posedge clk) if(0 && me.yenc.bsvalid[4] && !me.yenc.is_dc[4])
   $display("achufflen[%d]=%d, achuffcode[{%d,%d}]=0b%b",
     me.yenc.bitlen[4],
     me.yenc.ac_huff_len,
     me.yenc.runlen[4][0+:4],
     me.yenc.bitlen[4],
     me.yenc.ac_huff_code);
-always @(posedge clk) if(me.yenc.bsvalid[4] &&  me.yenc.is_dc[4])
+always @(posedge clk) if(0 && me.yenc.bsvalid[4] &&  me.yenc.is_dc[4])
   $display("dchufflen[%d]=%d, dchuffcode[%d]=0b%b",
     me.yenc.bitlen[4],
     me.yenc.dc_huff_len,
     me.yenc.bitlen[4],
     me.yenc.dc_huff_code);
+
+always @(posedge clk) if(!rst) begin
+  if(0 && me.is.enqueue) $display("in : 0x%x (nostuff:0x%x)",
+    me.is.wdata,
+    me.is.wdata_nostuff);
+  if(0 && me.is.dequeue) $display("out: 0x%x (roffset=%d)",
+    me.is.rdata,
+    me.is.roffset);
+  if(1 && me.is.dequeue&&me.is.stuff)  $write("s");
+end
+
 
 //reg   dequeue;
 //always @(posedge clk) dequeue <= rst ? 0 : ready;
