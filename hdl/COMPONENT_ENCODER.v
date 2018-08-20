@@ -85,7 +85,7 @@ generate genvar gi;
       );
     always @(posedge clk) begin
       // add 1 if result < 0
-      dct_results[gi] <= (result >>> (DCTSHIFT + QSHIFT)) + result[24-1];
+      dct_results[gi] <= (result >>> (DCTSHIFT + QSHIFT)) + $unsigned(result[24-1]);
     end
 
     // assertion
@@ -149,7 +149,7 @@ always @(posedge clk) begin
   // cycle 1 - convert val
   bitlen[2] <= bitlen[1];
   runlen[2] <= runlen[1];
-  val[2]    <= val[1]-val[1][8];  // sub 1 if ddc|dq < 0
+  val[2]    <= val[1] - $unsigned(val[1][8]); // sub 1 if ddc|dq < 0
   bsvalid[2]<= bsvalid[1];
   is_dc[2]  <= is_dc[1];
 
