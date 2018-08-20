@@ -205,9 +205,9 @@ always @(posedge clk) begin
   pre_edata[2]  <= evalid[2] ? edata_ce[2] : 0;
   pre_edata[3]  <= evalid[3] ? edata_fh    : 0;
 
-  elen  <= pre_elen;
-  edata <= pre_edata[3] | pre_edata[2] | pre_edata[1] | pre_edata[0];
-  edata_nostuff <= {24'h0, idx_fh<LEN_FH ? 8'hff : 8'h00};
+  elen  <= rst ? 0 : pre_elen;
+  edata <= rst ? 0 : pre_edata[3] | pre_edata[2] | pre_edata[1] | pre_edata[0];
+  edata_nostuff <= rst ? 0 : {24'h0, idx_fh<LEN_FH ? 8'hff : 8'h00};
 
   if(!rst) case (evalid)
     4'b0000: begin end
