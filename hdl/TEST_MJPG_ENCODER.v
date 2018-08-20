@@ -5,6 +5,7 @@ module TEST_MJPG_ENCODER #(
   parameter PERIOD=1000
 ) (
 );
+localparam  ONCE = 1;
 
 reg clk = 0;
 initial begin
@@ -78,14 +79,19 @@ always @(posedge clk) begin
         1: begin
           $display("width  = %d", me.width);
           $display("height = %d", me.height);
+          if(ONCE) begin $display("end"); $finish(); end
         end
-        2: begin $display("end"); $fclose(wfd); $finish(); end
+        2: begin $display("end"); $finish(); end
         default : begin $display("???"); $finish(); end
       endcase
       rtn = $rewind(rfd);
     end
     rtn = $fscanf(rfd,"%h\n", rdata);
   end
+end
+
+always @(negedge me.ereq_master) begin
+  if(!rst && wfd) $fflush(wfd);
 end
 
 always @(negedge me.cenc[1].bsvalid[4]) begin

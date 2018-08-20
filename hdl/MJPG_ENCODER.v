@@ -88,19 +88,18 @@ reg [8-1:0]   e_x_mcu[0:2];
 reg           ereq_ce[0:2];
 initial $readmemh("fh.hex", footer_header, 0, LEN_FH-1);
 always @(posedge clk) begin
-  if(rst) {elen_fh, edata_fh, idx_fh, ereq_master} <= 0;
+  if(rst) {elen_fh, edata_fh, ereq_master, idx_fh} <= 32'hFF;// FIXME: change me to 0
   else begin
     if(pulse_vsync) begin // byte alignment
       $display("byte alignment and start to output header");
       elen_fh <= {3'd0, bsrest};
       edata_fh<= 32'hxxxxxxff;
-      idx_fh  <= 0;
+      idx_fh  <= 8'h2; // FIXME: change me to 0
       if(ereq_master) begin
         $display("invalid encoding timing for component");
         $finish();
       end
     end else if(idx_fh<LEN_FH) begin // output footer and header
-      $display("header %d", idx_fh);
       elen_fh <= 8;
       edata_fh<= {24'hxxxxxx, footer_header[idx_fh]};
       idx_fh  <= idx_fh + 1;
