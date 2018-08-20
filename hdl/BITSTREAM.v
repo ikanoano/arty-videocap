@@ -5,7 +5,7 @@ module BITSTREAM (
   input   wire          clk,
   input   wire          rst,
 
-  input   wire[6-1:0]   ilength,  // 0 <= ilength <= 16
+  input   wire[6-1:0]   ilength,  // 0 <= ilength <= 32
   input   wire[32-1:0]  idata,
   output  wire[3-1:0]   rest,
 
@@ -63,6 +63,14 @@ function[64-1:0] ROTATE8 (input [64-1:0] v, input r); ROTATE8 = r ? {v[0+: 8], v
 function[64-1:0] ROTATE16(input [64-1:0] v, input r); ROTATE16= r ? {v[0+:16], v[16+:64-16]} : v; endfunction
 function[64-1:0] ROTATE32(input [64-1:0] v, input r); ROTATE32= r ? {v[0+:32], v[32+:64-32]} : v; endfunction
 
+// assertion
+always @(posedge clk) if(!rst) begin
+  if(ilength==32) $display("32");
+  if(ilength>32) begin
+    $display("invalid ilength=%d", ilength);
+    $finish();
+  end
+end
 endmodule
 
 `default_nettype wire

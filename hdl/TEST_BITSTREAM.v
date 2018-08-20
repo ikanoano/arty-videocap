@@ -97,6 +97,15 @@ initial begin
   @(posedge clk); ilength <= 16;  idata <= 32'hffff0505;
   @(posedge clk); ilength <= 16;  idata <= 32'hffff0505;
   @(posedge clk); ilength <= 0;
+  @(posedge clk); ilength <= 32;  idata <= 32'haaaaaaaa;
+  repeat(32) begin
+    @(posedge clk); ilength <= 1;   idata <= 32'hfffffffe;
+    @(posedge clk); ilength <= 32;  idata <= 32'haaaaaaaa;
+  end
+  @(posedge clk); ilength <= 0;
+  @(posedge clk); ilength <= 16;  idata <= 32'hffff0505;
+  @(posedge clk); ilength <= 16;  idata <= 32'hffff0505;
+  @(posedge clk); ilength <= 0;
   repeat(10) @(posedge clk);
   $display("end");
   $finish();
