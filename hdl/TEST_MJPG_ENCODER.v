@@ -20,8 +20,8 @@ initial begin
   repeat(2) @(posedge clk);
   if(1) begin
     // oshietyau
-    me.width  = 640;
-    me.height = 360;
+    //me.width  = 640;
+    //me.height = 360;
     me.footer_header[143] = 360 >> 8;
     me.footer_header[144] = 360 & 8'hff;
     me.footer_header[145] = 640 >> 8;
@@ -73,13 +73,15 @@ always @(posedge clk) begin
       $fwrite(wfd, "%u", jpeg_big);
     end
 
+    if(ONCE && cnt==1 && pvalid) begin
+      $display("end"); $finish();
+    end
     if($feof(rfd)) begin
       cnt = cnt+1;
       case (cnt)
         1: begin
           $display("width  = %d", me.width);
           $display("height = %d", me.height);
-          if(ONCE) begin $display("end"); $finish(); end
         end
         2: begin $display("end"); $finish(); end
         default : begin $display("???"); $finish(); end

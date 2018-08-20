@@ -14,13 +14,9 @@ module MJPG_ENCODER (
   output  wire[8-1:0]   jpeg
 );
 
-reg last_vsync, pulse_vsync;  // NOTE: pulse_vsync has 1 cycle latency
-always @(posedge clk) last_vsync  <= vsync;
-always @(posedge clk) pulse_vsync <= {last_vsync, vsync} == 2'b01;
-
 reg [12-1:0]  width, height, y, x, x_from_valid;  // 0 <= . < 2047
 wire[8-1:0]   h_mcu = width[3+:8];
-reg           hvalid;
+reg           hvalid, vvalid, start_pulse;
 always @(posedge clk) begin
   x_from_valid  <= (rst || hsync) ? -1 : x_from_valid + (pvalid | hvalid);
   x             <= (rst || hsync) ?  0 : x + pvalid;
@@ -34,6 +30,11 @@ always @(posedge clk) begin
     rst     ? 1'b0 :
     hsync   ? 1'b0 :
     pvalid  ? 1'b1 : hvalid;
+  vvalid <=
+    rst     ? 1'b0 :
+    vsync   ? 1'b0 :
+    pvalid  ? 1'b1 : vvalid;
+  start_pulse <= {vvalid, pvalid}==2'b01;
 end
 
 
@@ -90,8 +91,9 @@ initial $readmemh("fh.hex", footer_header, 0, LEN_FH-1);
 always @(posedge clk) begin
   if(rst) {elen_fh, edata_fh, ereq_master, idx_fh} <= 32'hFF;// FIXME: change me to 0
   else begin
-    if(pulse_vsync) begin // byte alignment
-      $display("byte alignment and start to output header");
+    if(start_pulse) begin // byte alignment
+      //$display("byte alignment");
+      $write("b");
       elen_fh <= {3'd0, bsrest};
       edata_fh<= 32'hxxxxxxff;
       idx_fh  <= 8'h2; // FIXME: change me to 0
@@ -100,6 +102,8 @@ always @(posedge clk) begin
         $finish();
       end
     end else if(idx_fh<LEN_FH) begin // output footer and header
+      //$display("start to output footer and header");
+      if(idx_fh==0) $write("f"); else $write("h");
       elen_fh <= 8;
       edata_fh<= {24'hxxxxxx, footer_header[idx_fh]};
       idx_fh  <= idx_fh + 1;
@@ -114,10 +118,12 @@ always @(posedge clk) begin
       edata_fh<= 32'hxxxxxxxx;
       idx_fh  <= idx_fh;
 
-      if(0<y && y<=height && y[0+:3]==0 && x_from_valid==0) begin
+      if(0<y && y<=height && y[0+:3]==0) begin
         //$display("start to output body");
+        if(!ereq_master) $write("<");
         ereq_master <= 1;
       end else if(e_x_mcu[2] >= h_mcu) begin
+        if(ereq_master) $write(">");
         ereq_master <= 0;
       end
     end
