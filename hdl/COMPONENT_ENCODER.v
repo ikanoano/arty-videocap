@@ -110,11 +110,11 @@ initial $readmemh(IS_Y ? "ac_y_huff.hex" : "ac_c_huff.hex", ac_huff, 0, 256-1);
 reg [ 6-1:0]  dct_idx;
 reg           abort;
 
-reg [ 4-1:0]  bitlen[1:4];
-reg [ 5-1:0]  runlen[0:4];
-reg  signed[ 9-1:0] val[1:4];
-reg           bsvalid[1:4];
-reg           is_dc[0:4];
+reg [ 4-1:0]  bitlen[1:5];
+reg [ 5-1:0]  runlen[0:5];
+reg  signed[ 9-1:0] val[1:5];
+reg           bsvalid[1:5];
+reg           is_dc[0:5];
 wire          eob = runlen[0]==5'd16 || dct_idx==DCT_TH;
 
 reg [ 5-1:0]  dc_huff_len,  ac_huff_len;
@@ -124,7 +124,7 @@ wire signed[ 8-1:0] sq = dct_results[dct_idx];
 reg  signed[ 8-1:0] last_dc;
 wire signed[ 8  :0] ddc = sq - last_dc;
 always @(posedge clk) begin
-  //NOTE: don't assert ereq more than 64 cycle
+  //NOTE: assert ereq DCT_TH+1 cycle
   if(!ereq) begin
     dct_idx   <= 0;           // reset
     abort     <= 0;           // reset
@@ -133,7 +133,7 @@ always @(posedge clk) begin
   end else begin
     dct_idx   <= dct_idx+1;
     abort     <= eob | abort; // assert from the next cycle of eob processing
-    runlen[0] <= is_dc[0] ? 0 : runlen[0] + (sq==0 ? 1 : 0);
+    runlen[0] <= (is_dc[0] || sq!=0) ? 0 : runlen[0] + 1;
     is_dc[0]  <= 0;
   end
   if(vsync)                   last_dc <= 0;
@@ -141,7 +141,7 @@ always @(posedge clk) begin
 
   // cycle 0 - initialization for special conditions
   bitlen[1] <= eob ? 0 : ~0;  // set mask if eob
-  runlen[1] <= runlen[0]; // if eob, runlen[0+:4]==0 -> 0 for lookup huff
+  runlen[1] <= eob ? 0 : runlen[0]; // if eob, runlen==0 -> 0 for lookup huff
   val[1]    <= is_dc[0] ? ddc : sq; // sub 1 if ddc|dq < 0
   bsvalid[1]<= ereq && (eob || is_dc[0] || (sq!=0 && !abort)); // eob||dc||ac
   is_dc[1]  <= is_dc[0];
@@ -175,6 +175,16 @@ always @(posedge clk) begin
   edata   <=  // concatinate huffman code and value
     ((is_dc[4] ? dc_huff_code : ac_huff_code)
       << (bitlen[4][3] ? 8 : bitlen[4][2:0])) | $unsigned(val[4]);
+  bitlen[5] <= bitlen[4];
+  runlen[5] <= runlen[4];
+  val[5]    <= val[4];
+  bsvalid[5]<= bsvalid[4];
+  is_dc[5]  <= is_dc[4];
+
+  if(bsvalid[4] && (dc_huff_code==16'hdead || ac_huff_code==16'hdead)) begin
+    $display("dead dc_huff_code=%x, ac_huff_code=%x", dc_huff_code, ac_huff_code);
+    $finish();
+  end
 end
 
 
