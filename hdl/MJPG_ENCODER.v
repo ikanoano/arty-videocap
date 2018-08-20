@@ -10,8 +10,9 @@ module MJPG_ENCODER (
   input   wire          vsync,
   input   wire[24-1:0]  ycbcr,
 
-  output  wire          bsvalid,
-  output  wire[32-1:0]  bsdata
+  output  wire          ready,
+  input   wire          dequeue,
+  output  wire[8-1:0]   jpeg
 );
 
 reg last_vsync, pulse_vsync;  // NOTE: pulse_vsync has 1 cycle latency
@@ -38,8 +39,10 @@ end
 
 
 reg [6-1:0]   elen;
-reg [32-1:0]  edata;
+reg [32-1:0]  edata, edata_nostuff;
 wire[3-1:0]   bsrest;
+wire          bsvalid;
+wire[32-1:0]  bsdata, bsdata_nostuff;
 BITSTREAM bs (
   .clk(clk),
   .rst(rst),
@@ -48,6 +51,25 @@ BITSTREAM bs (
   .rest(bsrest),
   .ovalid(bsvalid),
   .odata(bsdata)
+);
+BITSTREAM bs_stuff (
+  .clk(clk),
+  .rst(rst),
+  .ilength(elen),
+  .idata(edata_nostuff),
+  .rest(),
+  .ovalid(),
+  .odata(bsdata_nostuff)
+);
+INSERT_STUFF is (
+  .clk(clk),
+  .rst(rst),
+  .enqueue(bsvalid),
+  .wdata(bsdata),
+  .wdata_nostuff(bsdata_nostuff),
+  .ready(ready),
+  .dequeue(dequeue),
+  .rdata(jpeg)
 );
 
 // generate bitstream
@@ -187,9 +209,11 @@ always @(posedge clk) begin
 
   elen  <= pre_elen;
   edata <= pre_edata[3] | pre_edata[2] | pre_edata[1] | pre_edata[0];
+  edata_nostuff <= {24'h0, idx_fh<LEN_FH ? 8'hff : 8'h00};
 
   if(!rst) case (evalid)
-    4'b0000, 4'b1000, 4'b0100,4'b0010,4'b0001: begin end
+    4'b0000: begin end
+    4'b1000,4'b0100,4'b0010,4'b0001: begin end//$write("%d", $clog2(evalid));
     default : begin
       $display("bitstream collision detected: %b", evalid);
       $finish();

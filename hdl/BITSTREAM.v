@@ -41,7 +41,10 @@ wire[64-1:0]  accmask =
                     64'hffffffff00000000;
 integer j;
 always @(posedge clk) begin
-  for (j = 0; j < 6; j = j + 1) shiftlen[j] <= j>0 ? shiftlen[j-1]  : n_acclen;
+  for (j = 0; j < 6; j = j + 1) shiftlen[j] <=
+    j>0 ? shiftlen[j-1] :
+    rst ? 0 :
+          n_acclen;
 
   shiftdata[0]<= ilength==0 ? 64'd0 : {32'd0, idata & mask[ilength[0+:5]]};
   shiftdata[1]<= ROTATE2 (ROTATE1 (shiftdata[0], shiftlen[0][0]), shiftlen[0][1]);
@@ -49,8 +52,8 @@ always @(posedge clk) begin
   shiftdata[3]<= ROTATE32(ROTATE16(shiftdata[2], shiftlen[2][4]), shiftlen[2][5]);
   acc         <= rst ? 0 : acc & accmask | shiftdata[3];
 
-  ovalid      <= w_valid;
-  odata       <= shiftlen[4][5] ? acc[32+:32] : acc[0+:32];
+  ovalid      <= rst ? 0 : w_valid;
+  odata       <= rst ? 0 : (shiftlen[4][5] ? acc[32+:32] : acc[0+:32]);
 end
 
 function[64-1:0] ROTATE1 (input [64-1:0] v, input r); ROTATE1 = r ? {v[0+: 1], v[ 1+:64- 1]} : v; endfunction
