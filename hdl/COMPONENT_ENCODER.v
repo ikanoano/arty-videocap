@@ -28,27 +28,27 @@ localparam  QSHIFTMIN = 3;
 localparam  RSLTLEN   = 24 - DCTSHIFT - QSHIFTMIN;
 
 // dct
-reg [RSLTLEN-1:0] dct_results[0:DCT_TH-1];
+reg  signed[RSLTLEN-1:0]  dct_results[0:DCT_TH-1];
 generate genvar gi;
-  for (gi = 0; gi < DCT_TH; gi = gi + 1) begin
+  for (gi = 0; gi < DCT_TH; gi = gi + 1) begin : gen_dsp
     (* ram_style = "block" *)
-    reg [24-1:0]  sum_acc[0:2*256-1];   // 2 page * 256 mcu
+    reg  signed[24-1:0] sum_acc[0:2*256-1];   // 2 page * 256 mcu
 
-    wire[8-1:0] coscos; // signed
+    wire signed [8-1:0] coscos; // signed
     DCT_COSTABLE #(gi, SCALE) cost (.r(y_in_mcu), .c(x_in_mcu), .o(coscos));
 
-    reg [24-1:0]  memo, rmemo;
-    wire[24-1:0]  P;
-    wire          storeP, storeP_pre1;
+    reg  signed[24-1:0] rmemo, rrmemo;
+    wire signed[24-1:0] P;
+    wire                storeP, storeP_pre1;
     DSP dsp (
       .clk(clk),
       .load(x_in_mcu==0),
-    //.clear(x_in_mcu==0 && y_in_mcu==0),
+      .clear(x_in_mcu==0 && y_in_mcu==0),
       .idelay(valid && x_in_mcu==7),  // to be storeP
-      .A(pix),  // pix is level shifted in DSP by subtracting 128
+      .A({1'b0, pix}),  // pix is level shifted in DSP by subtracting 128
       .B(coscos),
-      .rrC(rmemo),
-      .D(128),
+      .rrC(rrmemo),
+      .D(9'd128),
       .P(P),
       .odelay_pre1(storeP_pre1),
       .odelay(storeP)
@@ -59,19 +59,19 @@ generate genvar gi;
     wire[9-1:0]   addrA = { page, baseA};
     wire[9-1:0]   addrB = {~page, baseB};
     reg [9-1:0]   raddrA;
-    reg [24-1:0]  result;
-    reg           clear;
+    reg           rclear;
+    reg  signed[24-1:0] result;
     always @(posedge clk) begin
       raddrA  <= addrA;
-      clear   <= y_in_mcu==0; // TODO: into dsp
-      rmemo   <= clear ? 0 : memo;
+      rclear  <= y_in_mcu==0; // TODO: into dsp
+      rrmemo  <= rclear ? 0 : rmemo;
 
       // port A
-      memo <= sum_acc[raddrA];
+      rmemo   <= sum_acc[raddrA];
       if(storeP) sum_acc[raddrA] <= P;
 
       // port B
-      result <= sum_acc[addrB];
+      result  <= sum_acc[addrB];
     end
 
     // rest of dct and quantize
@@ -109,20 +109,20 @@ initial $readmemh(IS_Y ? "ac_y_huff.hex" : "ac_c_huff.hex", ac_huff, 0, 256-1);
 
 reg [ 6-1:0]  dct_idx;
 reg           abort;
-wire[ 8-1:0]  sq = dct_results[dct_idx];
 
 reg [ 4-1:0]  bitlen[1:4];
 reg [ 5-1:0]  runlen[0:4];
-reg [ 9-1:0]  val[1:4];
+reg  signed[ 9-1:0] val[1:4];
 reg           bsvalid[1:4];
 reg           is_dc[0:4];
+wire          eob = runlen[0]==5'd16 || dct_idx==DCT_TH;
 
 reg [ 5-1:0]  dc_huff_len,  ac_huff_len;
 reg [16-1:0]  dc_huff_code, ac_huff_code;
 
-wire          eob = runlen[1]==5'd16 || dct_idx==DCT_TH;
-reg [ 8-1:0]  last_dc;
-wire[ 8  :0]  ddc = $signed(sq) - $signed(last_dc);
+wire signed[ 8-1:0] sq = dct_results[dct_idx];
+reg  signed[ 8-1:0] last_dc;
+wire signed[ 8  :0] ddc = sq - last_dc;
 always @(posedge clk) begin
   //NOTE: don't assert ereq more than 64 cycle
   if(!ereq) begin
@@ -141,9 +141,9 @@ always @(posedge clk) begin
 
   // cycle 0 - initialization for special conditions
   bitlen[1] <= eob ? 0 : ~0;  // set mask if eob
-  runlen[1] <= eob ? 0 : runlen[0];
-  val[1]    <= is_dc[0] ? $signed(ddc) : $signed(sq); // sub 1 if ddc|dq < 0
-  bsvalid[1]<= ereq && (eob || is_dc[0] || (sq>0 && !abort)); // eob || dc || ac
+  runlen[1] <= runlen[0]; // if eob, runlen[0+:4]==0 -> 0 for lookup huff
+  val[1]    <= is_dc[0] ? ddc : sq; // sub 1 if ddc|dq < 0
+  bsvalid[1]<= ereq && (eob || is_dc[0] || (sq!=0 && !abort)); // eob||dc||ac
   is_dc[1]  <= is_dc[0];
 
   // cycle 1 - convert val
@@ -154,7 +154,7 @@ always @(posedge clk) begin
   is_dc[2]  <= is_dc[1];
 
   // cycle 2 - lookup BITLEN
-  bitlen[3] <= bitlen[2] & BITLEN(val[2]);  // if eob, bitlen is masked to be 0
+  bitlen[3] <= bitlen[2][0] ? BITLEN(val[2]) : 0;  // if eob, bitlen is 0
   runlen[3] <= runlen[2];
   val[3]    <= val[2];
   bsvalid[3]<= bsvalid[2];
@@ -165,7 +165,7 @@ always @(posedge clk) begin
   {ac_huff_len, ac_huff_code} <= ac_huff[{runlen[3][0+:4],bitlen[3]}];
   bitlen[4] <= bitlen[3];
   runlen[4] <= runlen[3];
-  val[4]    <= (val[3] & ~(~9'd0 << bitlen[3]));  // mask obstructive 1
+  val[4]    <= ($unsigned(val[3]) & ~((~0) << bitlen[3])); // mask obstructive 1
   bsvalid[4]<= bsvalid[3];
   is_dc[4]  <= is_dc[3];
 
@@ -174,7 +174,7 @@ always @(posedge clk) begin
     !bsvalid[4] ? 6'd0 : bitlen[4] + (is_dc[4] ? dc_huff_len : ac_huff_len);
   edata   <=  // concatinate huffman code and value
     ((is_dc[4] ? dc_huff_code : ac_huff_code)
-      << (bitlen[4][3] ? 8 : bitlen[4][2:0])) | val[4];
+      << (bitlen[4][3] ? 8 : bitlen[4][2:0])) | $unsigned(val[4]);
 end
 
 
@@ -230,13 +230,13 @@ module DCT_COSTABLE #(
   parameter DCT_IDX = 27,
   parameter SCALE   = 7
 ) (
-  input   wire[3-1:0] r,
-  input   wire[3-1:0] c,
-  output  wire[8-1:0] o // signed
+  input   wire        [3-1:0] r,
+  input   wire        [3-1:0] c,
+  output  wire signed [8-1:0] o // signed
 );
 localparam real PI      = 3.141592653589793;
 
-wire[8-1:0] tbl[0:64-1];
+wire signed [8-1:0] tbl[0:64-1];
 localparam  v = //y
   DCT_IDX< 1 ? 0          :
   DCT_IDX< 3 ? DCT_IDX-1  :

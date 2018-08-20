@@ -9,10 +9,10 @@ module DSP (
   input   wire                clear,
   input   wire                idelay,
 
-  input   wire signed[ 8-1:0] A,
+  input   wire signed[ 9-1:0] A,
   input   wire signed[ 8-1:0] B,
   input   wire signed[24-1:0] rrC,
-  input   wire signed[ 8-1:0] D,
+  input   wire signed[ 9-1:0] D,
 
   output  reg  signed[24-1:0] P,
   output  wire                odelay_pre1,
@@ -20,7 +20,8 @@ module DSP (
 );
 
 reg                 rload, rclear, rdelay;
-reg  signed[ 8-1:0] rA, rB, rD;
+reg  signed[ 9-1:0] rA, rD;
+reg  signed[ 8-1:0] rB;
 always @(posedge clk) begin
   rload   <= load;
   rclear  <= clear;
@@ -32,7 +33,7 @@ always @(posedge clk) begin
 end
 
 reg                 rrload, rrclear, rrdelay;
-reg  signed[ 9-1:0] rrAD;
+reg  signed[10-1:0] rrAD;
 reg  signed[ 8-1:0] rrB;
 always @(posedge clk) begin
   rrload  <= rload;
@@ -44,7 +45,7 @@ always @(posedge clk) begin
 end
 
 reg                 rrrload, rrrclear, rrrdelay;
-reg  signed[17-1:0] rrrM;
+reg  signed[18-1:0] rrrM;
 reg  signed[24-1:0] rrrC;
 always @(posedge clk) begin
   rrrload <= rrload;
@@ -56,8 +57,12 @@ end
 assign  odelay_pre1 = rrrdelay;
 
 wire signed[24-1:0] zero = 0;
-wire signed[17-1:0] X = rrrM;
+wire signed[18-1:0] X = rrrM;
 wire signed[24-1:0] Z = /*rrrclear ? zero : (*/rrrload ? rrrC : P;//);
+always @(posedge clk) if(rrrclear && rrrC!=0) begin
+  $display("invalid rrrC: rrrclear=%b, rrrC=%x", rrrclear, rrrC);
+  $finish();
+end
 
 always @(posedge clk) begin
   P       <= X + Z;
