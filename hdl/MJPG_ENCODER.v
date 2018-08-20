@@ -55,6 +55,8 @@ localparam
   LEN_FH      = 171,
   DCT_TH_Y    = 28,
   DCT_TH_C    = 6,
+  DCT_RC_Y    = DCT_TH_Y+1, // Request assert Cycle
+  DCT_RC_C    = DCT_TH_C+1,
   NOBS_CYCLE  = 8;
 reg [8-1:0]   idx_fh;
 reg [8-1:0]   footer_header[0:LEN_FH-1];
@@ -104,13 +106,13 @@ always @(posedge clk) begin
   end
 
   if(ereq_master) begin
-    ereq_cnt    <= ereq_cnt < DCT_TH_Y+DCT_TH_C*2+NOBS_CYCLE ? ereq_cnt+1 : 0;
-    ereq_ce[0]  <=                                ereq_cnt<DCT_TH_Y;
-    ereq_ce[1]  <= DCT_TH_Y         <=ereq_cnt && ereq_cnt<DCT_TH_Y+DCT_TH_C;
-    ereq_ce[2]  <= DCT_TH_Y+DCT_TH_C<=ereq_cnt && ereq_cnt<DCT_TH_Y+DCT_TH_C*2;
-    e_x_mcu[0]  <= e_x_mcu[0] + (ereq_cnt==DCT_TH_Y             ? 1 : 0);
-    e_x_mcu[1]  <= e_x_mcu[1] + (ereq_cnt==DCT_TH_Y+DCT_TH_C    ? 1 : 0);
-    e_x_mcu[2]  <= e_x_mcu[2] + (ereq_cnt==DCT_TH_Y+DCT_TH_C*2  ? 1 : 0);
+    ereq_cnt    <= ereq_cnt < DCT_RC_Y+DCT_RC_C*2+NOBS_CYCLE ? ereq_cnt+1 : 0;
+    ereq_ce[0]  <=                                ereq_cnt<DCT_RC_Y;
+    ereq_ce[1]  <= DCT_RC_Y         <=ereq_cnt && ereq_cnt<DCT_RC_Y+DCT_RC_C;
+    ereq_ce[2]  <= DCT_RC_Y+DCT_RC_C<=ereq_cnt && ereq_cnt<DCT_RC_Y+DCT_RC_C*2;
+    e_x_mcu[0]  <= e_x_mcu[0] + (ereq_cnt==DCT_RC_Y             ? 1 : 0);
+    e_x_mcu[1]  <= e_x_mcu[1] + (ereq_cnt==DCT_RC_Y+DCT_RC_C    ? 1 : 0);
+    e_x_mcu[2]  <= e_x_mcu[2] + (ereq_cnt==DCT_RC_Y+DCT_RC_C*2  ? 1 : 0);
   end else begin
     ereq_cnt    <= 0;
     ereq_ce[0]  <= 0;
