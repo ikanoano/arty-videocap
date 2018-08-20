@@ -50,11 +50,11 @@ wire          pvalid, hsync, vsync;
 wire[24-1:0]  ycbcr;
 assign {vsync, hsync, pvalid, ycbcr} = rdata;
 
-wire          ready;
+wire          jvalid;
 wire[ 8-1:0]  jpeg;
 reg [32-1:0]  jpeg_big;
 integer       offset = 0;
-always @(posedge clk) if(ready) begin
+always @(posedge clk) if(jvalid) begin
   jpeg_big  <= (jpeg_big>>8) | (jpeg<<24);
   offset    <= offset+1;
 end
@@ -163,17 +163,13 @@ always @(posedge clk) if(!rst) begin
   if(0 && me.is.enqueue) $display("in : 0x%x (nostuff:0x%x)",
     me.is.wdata,
     me.is.wdata_nostuff);
-  if(0 && me.is.dequeue) $display("out: 0x%x (roffset=%d)",
+  if(0 && me.is.valid) $display("out: 0x%x (roffset=%d)",
     me.is.rdata,
     me.is.roffset);
-  if(1 && me.is.dequeue&&me.is.stuff)  $write("s");
+  if(1 && me.is.valid&&me.is.stuff)  $write("s");
 end
 
 
-//reg   dequeue;
-//always @(posedge clk) dequeue <= rst ? 0 : ready;
-//FIXME
-wire  dequeue = rst ? 0 : ready;
 MJPG_ENCODER me (
   clk,
   rst,
@@ -183,8 +179,7 @@ MJPG_ENCODER me (
   vsync,
   ycbcr,
 
-  ready,
-  dequeue,
+  jvalid,
   jpeg
 );
 

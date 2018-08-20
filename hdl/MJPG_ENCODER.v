@@ -10,8 +10,7 @@ module MJPG_ENCODER (
   input   wire          vsync,
   input   wire[24-1:0]  ycbcr,
 
-  output  wire          ready,
-  input   wire          dequeue,
+  output  wire          jvalid,
   output  wire[8-1:0]   jpeg
 );
 
@@ -67,8 +66,7 @@ INSERT_STUFF is (
   .enqueue(bsvalid),
   .wdata(bsdata),
   .wdata_nostuff(bsdata_nostuff),
-  .ready(ready),
-  .dequeue(dequeue),
+  .valid(jvalid),
   .rdata(jpeg)
 );
 
