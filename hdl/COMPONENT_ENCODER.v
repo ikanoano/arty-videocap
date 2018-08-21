@@ -143,7 +143,7 @@ always @(posedge clk) begin
   bitlen[1] <= eob ? 0 : ~0;  // set mask if eob
   runlen[1] <= eob ? 0 : runlen[0]; // if eob, runlen==0 -> 0 for lookup huff
   val[1]    <= is_dc[0] ? ddc : sq; // sub 1 if ddc|dq < 0
-  bsvalid[1]<= ereq && (eob || is_dc[0] || (sq!=0 && !abort)); // eob||dc||ac
+  bsvalid[1]<= ereq && !abort && (eob || is_dc[0] || sq!=0); // eob||dc||ac
   is_dc[1]  <= is_dc[0];
 
   // cycle 1 - convert val
