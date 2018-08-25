@@ -1,3 +1,6 @@
 [submodule "hdl/ArtyEtherentTX"]
 	path = hdl/ArtyEtherentTX
 	url = git@github.com:ikanoano/ArtyEtherentTX.git
+[submodule "hdl/vivado-library"]
+	path = hdl/vivado-library
+	url = git@github.com:ikanoano/vivado-library.git
