@@ -116,38 +116,43 @@ IDELAYCTRL idc (
 );
 
 // cross over clock region
-wire          full1, empty1, full2, empty2;
+wire          full1, empty1, filled1, full2, empty2;
+reg           enqueue, dequeued;
 wire[30-1:0]  ch_g,  ch_ser;
 reg [30-1:0]  rch_des, rch_g, rch_ser;
 reg [40-1:0]  irch_ser;
 
 always @(posedge clk1x_des) rch_des <= ch_des;
-ASYNC_FIFO #(.SIZE_SCALE(7), .WIDTH(30), .FILLED_THRESH(2**6)) cdc_fifo1 (
+always @(posedge clk1x_des) enqueue <= ~filled1;
+ASYNC_FIFO #(.SIZE_SCALE(8), .WIDTH(30), .FILLED_THRESH(2**7)) cdc_fifo1 (
   .rst(rst_des),
   // Write clock region
   .wclk(clk1x_des),
   .full(full1),
-  .enqueue(~full1),
+  .filled_w(filled1),
+  .enqueue(enqueue),
   .wdata(rch_des),
   // Read clock region
   .rclk(clk1x),
   .empty(empty1),
-  .filled(),
+  .filled_r(),
   .dequeue(~empty1),
   .rdata(ch_g)
 );
 always @(posedge clk1x) rch_g <= ch_g;
-ASYNC_FIFO #(.SIZE_SCALE(7), .WIDTH(30), .FILLED_THRESH(2**6)) cdc_fifo2 (
+always @(posedge clk1x) dequeued <= ~empty1;
+ASYNC_FIFO #(.SIZE_SCALE(8), .WIDTH(30), .FILLED_THRESH(2**7)) cdc_fifo2 (
   .rst(rst_g),
   // Write clock region
   .wclk(clk1x),
   .full(full2),
-  .enqueue(~full2),
+  .filled_w(),
+  .enqueue(dequeued),
   .wdata(rch_g),
   // Read clock region
   .rclk(clk1x_ser),
   .empty(empty2),
-  .filled(),
+  .filled_r(),
   .dequeue(~empty2),
   .rdata(ch_ser)
 );

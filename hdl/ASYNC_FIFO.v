@@ -10,12 +10,13 @@ module ASYNC_FIFO #(parameter
   // Write clock region
   input   wire                              wclk,
   output  reg                               full,
+  output  reg                               filled_w,
   input   wire                              enqueue,
   input   wire[WIDTH-1:0]                   wdata,
   // Read clock region
   input   wire                              rclk,
   output  reg                               empty,
-  output  reg                               filled,
+  output  reg                               filled_r,
   input   wire                              dequeue,
   output  wire[WIDTH-1:0]                   rdata
 );
@@ -49,6 +50,9 @@ always @(posedge wclk) begin
 
   waddr               <= next_waddr;
   waddr_gray          <= BIN2GRAY(next_waddr);
+
+  // Update filled signal
+  filled_w  <= $unsigned(waddr - raddr_bin) > FILLED_THRESH;
 end
 
 // Read clock region
@@ -77,7 +81,7 @@ always @(posedge rclk) begin
   waddr_bin           <= GRAY2BIN(waddr_gray_sync[1]);
 
   // Update filled signal
-  filled  <= $unsigned(waddr_bin - raddr) > FILLED_THRESH;
+  filled_r  <= $unsigned(waddr_bin - raddr) > FILLED_THRESH;
 end
 
 RAM #(SIZE_SCALE, WIDTH) rwram (
