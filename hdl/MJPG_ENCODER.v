@@ -6,7 +6,6 @@ module MJPG_ENCODER (
   input   wire          rst,
 
   input   wire          pvalid,
-  input   wire          hsync,
   input   wire          vsync,
   input   wire[24-1:0]  ycbcr,
 
@@ -17,6 +16,8 @@ module MJPG_ENCODER (
 reg [12-1:0]  width, height, y, x, x_from_valid;  // 0 <= . < 2047
 wire[8-1:0]   h_mcu = width[3+:8];
 reg           hvalid, vvalid, start_pulse;
+reg [16-1:0]  hsync_shift;
+wire          hsync = hsync_shift[15];
 always @(posedge clk) begin
   x_from_valid  <= (rst || hsync) ? -1 : x_from_valid + (pvalid | hvalid);
   x             <= (rst || hsync) ?  0 : x + pvalid;
@@ -35,6 +36,9 @@ always @(posedge clk) begin
     vsync   ? 1'b0 :
     pvalid  ? 1'b1 : vvalid;
   start_pulse <= {vvalid, pvalid}==2'b01;
+
+  // assert hsync in 16 cycle after pvalid is deasserted
+  hsync_shift <= {hsync_shift[0+:15], ~pvalid & hvalid};
 end
 
 

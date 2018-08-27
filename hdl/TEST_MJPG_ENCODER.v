@@ -183,7 +183,6 @@ MJPG_ENCODER me (
   rst,
 
   pvalid,
-  hsync,
   vsync,
   ycbcr,
 
