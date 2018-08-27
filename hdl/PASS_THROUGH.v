@@ -76,11 +76,13 @@ SASRESET sas_ser (
   .clk(clk1x_ser), .sync_rst_src(rst_des), .async_rst_src(~locked_ser), .rst(rst_ser));
 
 // receiver
-wire[3-1:0]   vld_cb, rdy_cb, dbg_pAlignErr;
+wire[3-1:0]   vld_cb, rdy_cb, dbg_pBitslip;
 wire[30-1:0]  ch_des;
 generate genvar gi;
 for (gi = 0; gi < 3; gi = gi + 1) begin
   TMDS_Receiver # (
+    .kCtlTknCount    (128),
+    .kTimeoutMs      (50),
     .kRefClkFrqMHz   (200),       // what is the RefClk frequency
     .kIDLY_TapValuePs(78),        // delay in ps per tap
     .kIDLY_TapWidth  (5),         // number of bits for IDELAYE2 tap counter
@@ -99,13 +101,9 @@ for (gi = 0; gi < 3; gi = gi + 1) begin
     // Parallel data
     .pDataInBnd(ch_des[10*gi +: 10]),
 
-    // Channel bonding (three data channels in total)
-    .pOtherChVld({vld_cb[(gi+1)%3], vld_cb[(gi+2)%3]}),
-    .pOtherChRdy({rdy_cb[(gi+1)%3], rdy_cb[(gi+2)%3]}),
+    // Status and debug
     .pMeVld(vld_cb[gi]),
-    .pMeRdy(rdy_cb[gi]),
-
-    .dbg_pAlignErr(dbg_pAlignErr[gi])
+    .dbg_pBitslip(dbg_pBitslip[gi])
   );
 end
 endgenerate
@@ -120,15 +118,17 @@ IDELAYCTRL idc (
 // cross over clock region
 wire          full1, empty1, full2, empty2;
 wire[30-1:0]  ch_g,  ch_ser;
-reg [30-1:0]  rch_g;
-reg [40-1:0]  rch_ser;
-ASYNC_FIFO #(.SIZE_SCALE(12), .WIDTH(30), .FILLED_THRESH(2**10)) cdc_fifo1 (
+reg [30-1:0]  rch_des, rch_g, rch_ser;
+reg [40-1:0]  irch_ser;
+
+always @(posedge clk1x_des) rch_des <= ch_des;
+ASYNC_FIFO #(.SIZE_SCALE(7), .WIDTH(30), .FILLED_THRESH(2**6)) cdc_fifo1 (
   .rst(rst_des),
   // Write clock region
   .wclk(clk1x_des),
   .full(full1),
   .enqueue(~full1),
-  .wdata(ch_des),
+  .wdata(rch_des),
   // Read clock region
   .rclk(clk1x),
   .empty(empty1),
@@ -137,7 +137,7 @@ ASYNC_FIFO #(.SIZE_SCALE(12), .WIDTH(30), .FILLED_THRESH(2**10)) cdc_fifo1 (
   .rdata(ch_g)
 );
 always @(posedge clk1x) rch_g <= ch_g;
-ASYNC_FIFO #(.SIZE_SCALE(12), .WIDTH(30), .FILLED_THRESH(2**10)) cdc_fifo2 (
+ASYNC_FIFO #(.SIZE_SCALE(7), .WIDTH(30), .FILLED_THRESH(2**6)) cdc_fifo2 (
   .rst(rst_g),
   // Write clock region
   .wclk(clk1x),
@@ -152,7 +152,8 @@ ASYNC_FIFO #(.SIZE_SCALE(12), .WIDTH(30), .FILLED_THRESH(2**10)) cdc_fifo2 (
   .rdata(ch_ser)
 );
 always @(posedge clk1x_ser) begin
-  rch_ser <= {10'b0000011111, ch_ser} ^ {
+  rch_ser   <= ch_ser;
+  irch_ser  <= {10'b0000011111, rch_ser} ^ {
       {10{TX_INV[3]}},
       {10{TX_INV[2]}},
       {10{TX_INV[1]}},
@@ -166,7 +167,7 @@ SERIALIZER10 tx [4-1:0] (
   .clk_parallel_sdr(clk1x_ser),
   .clk_serial_ddr(clk5x_ser),
   .rst(rst_ser),
-  .parallel_in(rch_ser),
+  .parallel_in(irch_ser),
   .serial_out(serialized)
 );
 OBUFDS #(.IOSTANDARD("TMDS_33")) tmdsbuf [4-1:0] (
@@ -178,14 +179,28 @@ OBUFDS #(.IOSTANDARD("TMDS_33")) tmdsbuf [4-1:0] (
 // indicator
 localparam[20-1:0]  LEDCNT_TH1  = (1<<20) - (1<<19);
 localparam[20-1:0]  LEDCNT_TH2  = (1<<20) - (1<<17);
-reg [20-1:0]  ledcnt=0;
+reg [20-1:0]  ledcnt1=0, ledcnt2=0;
 always @(posedge clk) begin
-  ledcnt  <= ledcnt+1;
-  led     <= ledcnt<LEDCNT_TH1 ? 0 : {ch_ser[0], &vld_cb, locked_des, ideready};
-  led0[2] <= ledcnt<LEDCNT_TH2 ? 0 : vld_cb[0]; // Blue Channel
-  led1[1] <= ledcnt<LEDCNT_TH2 ? 0 : vld_cb[1]; // Green Channel
-  led2[0] <= ledcnt<LEDCNT_TH2 ? 0 : vld_cb[2]; // Red Channel
-  led3    <= ledcnt<LEDCNT_TH2 ? 0 : {dbg_pAlignErr[0], dbg_pAlignErr[1], dbg_pAlignErr[2]};
+  ledcnt1 <= ledcnt1+1;
+  led[4]  <= ledcnt1<LEDCNT_TH1 ? 0 : ideready;
+  led[5]  <= ledcnt1<LEDCNT_TH1 ? 0 : locked_des;
+end
+always @(posedge clk1x_des) begin
+  ledcnt2 <= ledcnt2+1;
+  led[6]  <= ledcnt2<LEDCNT_TH1 ? 0 : &vld_cb;
+  led0[2] <= ledcnt2<LEDCNT_TH2 ? 0 : vld_cb[0]; // Blue Channel
+  led1[1] <= ledcnt2<LEDCNT_TH2 ? 0 : vld_cb[1]; // Green Channel
+  led2[0] <= ledcnt2<LEDCNT_TH2 ? 0 : vld_cb[2]; // Red Channel
+  led3    <= ledcnt2<LEDCNT_TH2 ? 0 : {dbg_pBitslip[0], dbg_pBitslip[1], dbg_pBitslip[2]};
+end
+
+// debug
+(* keep = "true" *)
+reg [6-1:0] dbg_bs_cnt[0:3-1];
+always @(posedge clk1x_des) begin
+  dbg_bs_cnt[0] <= rst_des ? 6'd0 : dbg_bs_cnt[0] + dbg_pBitslip[0];
+  dbg_bs_cnt[1] <= rst_des ? 6'd0 : dbg_bs_cnt[1] + dbg_pBitslip[1];
+  dbg_bs_cnt[2] <= rst_des ? 6'd0 : dbg_bs_cnt[2] + dbg_pBitslip[2];
 end
 
 initial if(RX_INV[3]) begin $display("not supported RX_INV"); $finish(); end
