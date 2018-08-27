@@ -32,12 +32,13 @@ ASYNC_FIFO #(
   // Write clock region
   .wclk(enc_clk),
   .full(),
+  .filled_w(),
   .enqueue(enqueue),
   .wdata(jpeg),
   // Read clock region
   .rclk(eth_clk),
   .empty(empty),
-  .filled(filled),
+  .filled_r(filled),
   .dequeue(dequeue),
   .rdata(rdata)
 );

@@ -73,15 +73,15 @@ always @(posedge rclk) begin
   dequeue_reg   <= dequeue;
 end
 
-wire          full, empty, filled;
+wire          full, empty, filled_r, filled_w;
 reg [ 8-1:0]  wdata;
 wire[ 8-1:0]  rdata;
 ASYNC_FIFO #(8,8,128) af (
   rst,  // Hold 8 cycle for slower clock
   // Write clock region
-  wclk, full, enqueue, wdata,
+  wclk, full, filled_w, enqueue, wdata,
   // Read clock region
-  rclk, empty, filled, dequeue, rdata
+  rclk, empty, filled_r, dequeue, rdata
 );
 
 endmodule
