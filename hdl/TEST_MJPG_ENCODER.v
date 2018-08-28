@@ -17,15 +17,15 @@ reg rst = 1;
 initial begin
   repeat(10) @(posedge clk);
   rst <= 0;
-  repeat(2) @(posedge clk);
+  repeat(10) @(posedge clk);
   if(1) begin
     // oshietyau
-    //me.width  = 640;
-    //me.height = 360;
-    me.footer_header[143] = 360 >> 8;
-    me.footer_header[144] = 360 & 8'hff;
-    me.footer_header[145] = 640 >> 8;
-    me.footer_header[146] = 640 & 8'hff;
+    //me.width  <= 640;
+    me.height <= 360;
+    me.footer_header[143] <= 360 >> 8;
+    me.footer_header[144] <= 360 & 8'hff;
+    me.footer_header[145] <= 640 >> 8;
+    me.footer_header[146] <= 640 & 8'hff;
   end
 end
 
@@ -89,6 +89,11 @@ always @(posedge clk) begin
       rtn = $rewind(rfd);
     end
     rtn = $fscanf(rfd,"%h\n", rdata);
+  end
+
+  if(^rdata===1'bx) begin
+    $display("rdata has x (%b). set 0.", rdata);
+    rdata = 0;
   end
 end
 

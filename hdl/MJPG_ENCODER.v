@@ -122,7 +122,7 @@ always @(posedge clk) begin
       edata_fh<= 32'hxxxxxxxx;
       idx_fh  <= idx_fh;
 
-      if(0<y && y<=height && y[0+:3]==0) begin
+      if(0<y && y<height && y[0+:3]==0) begin // FIXME: last line cannot be output
         //$display("start to output body");
         if(!ereq_master) $write("<");
         ereq_master <= 1;
