@@ -79,16 +79,17 @@ wire
 wire[24-1:0]  ycbcr;
 DECODER dec [0:3-1] (.clk(clk), .rst(rst), .D(data), .Q(ycbcr));
 
-// FIXME: pvalid 2 cycle nagai
 reg           pvalid, vsync, frame_mask, rpvalid, rvsync;
+reg [1:0]     pvalid_assert;
 reg [24-1:0]  rycbcr;
 always @(posedge clk) begin
   if(rst) begin
-    {pvalid, vsync, frame_mask} <= 0;
+    {pvalid, vsync, frame_mask, pvalid_assert} <= 0;
   end else begin
+    pvalid_assert <= {pvalid_assert[0], s0};
     pvalid  <=
       (c0 | c1 | c2 | c3) ? 1'b0 :
-      s0                  ? 1'b1 : pvalid;
+      &pvalid_assert      ? 1'b1 : pvalid;
     vsync   <=
       vd ? 1'b0 :
       va ? 1'b1 : vsync;
