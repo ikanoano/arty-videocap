@@ -95,7 +95,7 @@ always @(posedge clk) begin
       va ? 1'b1 : vsync;
 
     // make frame rate half
-    if(!vsync && va) frame_mask <= 1'b1;//FIXME: ~frame_mask; // posedge vsync
+    if(!vsync && va) frame_mask <= ~frame_mask; // posedge vsync
   end
 
   rpvalid <= pvalid & frame_mask;

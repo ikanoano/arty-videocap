@@ -24,7 +24,7 @@ reg           dequeue = 0;
 wire[8-1:0]   rdata;
 wire          empty, filled;
 ASYNC_FIFO #(
-  .SIZE_SCALE(12),
+  .SIZE_SCALE(14),
   .WIDTH(8),
   .FILLED_THRESH(1024)
 ) af (
