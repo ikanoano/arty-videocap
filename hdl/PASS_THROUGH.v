@@ -19,7 +19,13 @@ module PASS_THROUGH #(
   output  reg [3-1:0]     led3,     // RGB LEDs
   output  reg [7:4]       led,      // LEDs LD4-7
   input   wire[4-1:0]     btn,
-  input   wire[4-1:0]     sw//,
+  input   wire[4-1:0]     sw,
+
+  // if use PASS_THROUGH as a TOP, comment out below
+  output  wire            clk_data,
+  output  wire            rst_data,
+  output  wire            valid_data,
+  output  wire[30-1:0]    data
 );
 wire  rst_ref, rst_des, rst_g, rst_ser, rst_idly;
 
@@ -180,10 +186,16 @@ OBUFDS #(.IOSTANDARD("TMDS_33")) tmdsbuf [4-1:0] (
   .I(serialized)
 );
 
+// output
+assign  clk_data  = clk1x;
+assign  rst_data  = rst_g;
+assign  valid_data= dequeued;
+assign  data      = rch_g;
+
 // indicator
-localparam[20-1:0]  LEDCNT_TH1  = (1<<20) - (1<<19);
-localparam[20-1:0]  LEDCNT_TH2  = (1<<20) - (1<<17);
-reg [20-1:0]  ledcnt1=0, ledcnt2=0;
+localparam[18-1:0]  LEDCNT_TH1  = (1<<20) - (1<<13);
+localparam[18-1:0]  LEDCNT_TH2  = (1<<20) - (1<<10);
+reg [18-1:0]  ledcnt1=0, ledcnt2=0;
 always @(posedge clk) begin
   ledcnt1 <= ledcnt1+1;
   led[4]  <= ledcnt1<LEDCNT_TH1 ? 0 : ideready;
