@@ -5,7 +5,7 @@ module BRIDGE_ENC2ETH (
   input   wire                enc_clk,
   input   wire                rst,
   input   wire                enqueue,
-  input   wire signed[ 8-1:0] jpeg,
+  input   wire[8-1:0]         jpeg,
 
   input   wire                eth_clk,
   output  reg                 start_send,
