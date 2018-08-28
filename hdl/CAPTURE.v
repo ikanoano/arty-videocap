@@ -76,12 +76,21 @@ wire
   s0  = data[0+:10] == START0,
   vd  = c0 | c1,  // vsync deassert
   va  = c2 | c3;  // vcync assert
-wire[24-1:0]  ycbcr;
-DECODER dec [0:3-1] (.clk(clk), .rst(rst), .D(data), .Q(ycbcr));
+wire[24-1:0]  bgr, ycbcr;
+DECODER dec [3-1:0] (.clk(clk), .rst(rst), .D(data), .Q(bgr));  // + 1 cycle
+RGB2YCBCR cnv_color ( // + 8 cycle
+  .clk(clk),
+  .iR({1'b0, bgr[8*2+:8]}),
+  .iG({1'b0, bgr[8*1+:8]}),
+  .iB({1'b0, bgr[8*0+:8]}),
+  .oY (ycbcr[8*0+:8]),
+  .oCb(ycbcr[8*1+:8]),
+  .oCr(ycbcr[8*2+:8])
+);
 
-reg           pvalid, vsync, frame_mask, rpvalid, rvsync;
+integer i;
+reg           pvalid, vsync, frame_mask, rpvalid[2:10-1], rvsync[2:10-1];
 reg [1:0]     pvalid_assert;
-reg [24-1:0]  rycbcr;
 always @(posedge clk) begin
   if(rst) begin
     {pvalid, vsync, frame_mask, pvalid_assert} <= 0;
@@ -98,9 +107,10 @@ always @(posedge clk) begin
     if(!vsync && va) frame_mask <= ~frame_mask; // posedge vsync
   end
 
-  rpvalid <= pvalid & frame_mask;
-  rvsync  <= vsync  & frame_mask;
-  rycbcr  <= ycbcr;
+  for (i = 2; i < 10; i = i + 1) begin
+    rpvalid[i] <= i>2 ? rpvalid[i-1] : pvalid & frame_mask;
+    rvsync [i] <= i>2 ? rvsync [i-1] : vsync  & frame_mask;
+  end
 end
 
 (* keep = "true" *)
@@ -111,9 +121,9 @@ MJPG_ENCODER me (
   .clk(clk),
   .rst(rst),
 
-  .pvalid(rpvalid),
-  .vsync(rvsync),
-  .ycbcr(rycbcr),
+  .pvalid(rpvalid[9]),
+  .vsync(rvsync[9]),
+  .ycbcr(ycbcr),
 
   .jvalid(jvalid),
   .jpeg(jpeg)
