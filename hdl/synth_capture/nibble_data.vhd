@@ -1,0 +1,1 @@
+../ArtyEtherentTX/hdl/nibble_data.vhd

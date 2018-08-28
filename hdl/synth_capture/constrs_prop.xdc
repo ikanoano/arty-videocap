@@ -1,0 +1,1 @@
+../constrs_prop.xdc
