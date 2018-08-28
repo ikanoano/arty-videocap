@@ -24,9 +24,9 @@ reg           dequeue = 0;
 wire[8-1:0]   rdata;
 wire          empty, filled;
 ASYNC_FIFO #(
-  .SIZE_SCALE(14),
+  .SIZE_SCALE(15),
   .WIDTH(8),
-  .FILLED_THRESH(1024)
+  .FILLED_THRESH(1024*4)
 ) af (
   .rst(rst),// Hold 8 cycle in slower clock
   // Write clock region
