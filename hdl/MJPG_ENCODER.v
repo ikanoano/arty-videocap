@@ -23,8 +23,8 @@ always @(posedge clk) begin
   x             <= (rst || hsync) ?  0 : x + pvalid;
   y             <= (rst || vsync) ?  0 : y + (hvalid & hsync);
 
-  width         <= rst ? 12'd0 : (width <x  ? x : width);
-  height        <= rst ? 12'd0 : (height<y  ? y : height);
+  width         <= rst ? 12'd0 : (hvalid & hsync ? x : width);
+  height        <= rst ? 12'd0 : (vvalid & vsync ? y : height);
   //$display("y=%d, x=%d", y, x);
 
   hvalid <=
@@ -230,9 +230,10 @@ end
 
 // debug
 (* keep = "true" *)
-reg [12-1:0]  dbg_width;  // 0 <= . < 2047
+reg [12-1:0]  dbg_width, dbg_height;  // 0 <= . < 2047
 always @(posedge clk) begin
   dbg_width     <= (hvalid & hsync) ? x : dbg_width;
+  dbg_height    <= (vvalid & vsync) ? y : dbg_height;
 end
 
 endmodule
