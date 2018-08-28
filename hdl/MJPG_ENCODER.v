@@ -25,7 +25,6 @@ always @(posedge clk) begin
 
   width         <= rst ? 12'd0 : (width <x  ? x : width);
   height        <= rst ? 12'd0 : (height<y  ? y : height);
-  dbg_width     <= hsync ? x : dbg_width;
   //$display("y=%d, x=%d", y, x);
 
   hvalid <=
@@ -101,7 +100,7 @@ always @(posedge clk) begin
       $write("b");
       elen_fh <= {3'd0, bsrest};
       edata_fh<= 32'hxxxxxxff;
-      idx_fh  <= 8'h2; // FIXME: change me to 0
+      idx_fh  <= 8'h0; // change me to 0(in impl) or 2(in sim)
       if(ereq_master) begin
         $display("invalid encoding timing for component");
         $finish();
@@ -233,7 +232,7 @@ end
 (* keep = "true" *)
 reg [12-1:0]  dbg_width;  // 0 <= . < 2047
 always @(posedge clk) begin
-  dbg_width     <= hsync ? x : dbg_width;
+  dbg_width     <= (hvalid & hsync) ? x : dbg_width;
 end
 
 endmodule
