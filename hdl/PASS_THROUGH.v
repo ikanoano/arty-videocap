@@ -42,14 +42,13 @@ clk_wiz_1 clocking_des (      // MMCM
   .clk_in1_p(tmds_rx_p[3]),   // X MHz
   .clk_in1_n(tmds_rx_n[3]),
   .reset(rst_ref),
-  .clk_out1(),                // X MHz,   BUFG
+  .clk_out1(clk1x),           // X MHz,   BUFG
   .clk_out2(clk5x_des_nb),    // 5X MHz,  No buffer
   .locked(locked_des)
 );
 BUFIO bufio_des (.I(clk5x_des_nb), .O(clk5x_des));  // buffer for high freq
 BUFR #(.BUFR_DIVIDE("5"),.SIM_DEVICE("7SERIES")) bufr_des (
   .I(clk5x_des_nb), .O(clk1x_des), .CE(1'b1), .CLR(1'b0));
-BUFG bufg_des(.I(clk1x_des), .O(clk1x));
 
 // serializer clock
 clk_wiz_2 clocking_ser (      // MMCM
