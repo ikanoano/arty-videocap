@@ -23,8 +23,9 @@ always @(posedge clk) begin
   x             <= (rst || hsync) ?  0 : x + pvalid;
   y             <= (rst || vsync) ?  0 : y + (hvalid & hsync);
 
-  width         <= rst ? 0 : (width <x  ? x : width);
-  height        <= rst ? 0 : (height<y  ? y : height);
+  width         <= rst ? 12'd0 : (width <x  ? x : width);
+  height        <= rst ? 12'd0 : (height<y  ? y : height);
+  dbg_width     <= hsync ? x : dbg_width;
   //$display("y=%d, x=%d", y, x);
 
   hvalid <=
@@ -37,7 +38,7 @@ always @(posedge clk) begin
     pvalid  ? 1'b1 : vvalid;
   start_pulse <= {vvalid, pvalid}==2'b01;
 
-  // assert hsync in 16 cycle after pvalid is deasserted
+  // assert hsync 16 cycle in 16 cycle after pvalid is deasserted
   hsync_shift <= {hsync_shift[0+:15], ~pvalid & hvalid};
 end
 
@@ -226,6 +227,13 @@ always @(posedge clk) begin
       $finish();
     end
   endcase
+end
+
+// debug
+(* keep = "true" *)
+reg [12-1:0]  dbg_width;  // 0 <= . < 2047
+always @(posedge clk) begin
+  dbg_width     <= hsync ? x : dbg_width;
 end
 
 endmodule
