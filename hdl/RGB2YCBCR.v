@@ -29,12 +29,12 @@ reg  signed[9-1:0]        rR, rG, rB, rrR, rrB, rrrR, rrrB, rrrrR, rrrrB;
 reg  signed[9+SCALE:0]    RC, GC, BC;
 reg  signed[11+SCALE:0]   scaleY;
 wire       [10-1:0]       Y = scaleY[SCALE +: 10];
-reg        [8-1:0]        rY, rrY, rrrY, rrrrY;
+reg  signed[9-1:0]        rY, rrY, rrrY, rrrrY;
 reg  signed[11-1:0]       BY, RY;
 reg  signed[11+SCALE:0]   BYC, RYC;
 reg  signed[12+SCALE:0]   scaleCb, scaleCr;
-wire       [11-1:0]       Cb = scaleCb[SCALE +: 11];
-wire       [11-1:0]       Cr = scaleCr[SCALE +: 11];
+wire signed[12-1:0]       Cb = scaleCb[SCALE +: 12];
+wire signed[12-1:0]       Cr = scaleCr[SCALE +: 12];
 always @(posedge clk) begin
   // cycle 1
   rR      <= iR;
@@ -54,14 +54,14 @@ always @(posedge clk) begin
   rrrR    <= rrR;
 
   // cycle 4
-  rY      <= Y < 256 ? Y : 255;
+  rY      <= Y>=256 ? 8'd255 : Y;
   rrrrB   <= rrrB;
   rrrrR   <= rrrR;
 
   // cycle 5
   rrY     <= rY;
-  BY      <= rrrrB - $signed(rY);
-  RY      <= rrrrR - $signed(rY);
+  BY      <= rrrrB - rY;
+  RY      <= rrrrR - rY;
 
   // cycle 6
   rrrY    <= rrY;
@@ -74,9 +74,9 @@ always @(posedge clk) begin
   scaleCr <= RYC + C6;
 
   // cycle 8
-  oY      <= rrrrY;
-  oCb     <= Cb   < 256 ? Cb  : 255;
-  oCr     <= Cr   < 256 ? Cr  : 255;
+  oY      <= rrrrY[0+:8];
+  oCb     <= Cb<0 ? 8'd0 : Cb>=256 ? 8'd255 : Cb[0+:8];
+  oCr     <= Cr<0 ? 8'd0 : Cr>=256 ? 8'd255 : Cr[0+:8];
 
 end
 
