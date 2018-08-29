@@ -16,8 +16,6 @@ module BRIDGE_ENC2ETH (
   output  reg                 with_usr_valid
 );
 
-
-reg           enqueue = 0;
 reg [8-1:0]   wdata   = 0;
 
 reg           dequeue = 0;

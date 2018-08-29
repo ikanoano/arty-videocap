@@ -1,7 +1,7 @@
 `default_nettype none
 `timescale 1 ps / 1 ps
 
-(* use_dsp48 = "yes" *)
+(* use_dsp = "yes" *)
 module DSP (
   input   wire                clk,
 
