@@ -68,14 +68,7 @@ PASS_THROUGH #(.RX_INV(RX_INV), .TX_INV(TX_INV)) pt (
   .data(data)
 );
 
-wire
-  c0  = data[0+:10] == CTLTKN0,
-  c1  = data[0+:10] == CTLTKN1,
-  c2  = data[0+:10] == CTLTKN2,
-  c3  = data[0+:10] == CTLTKN3,
-  s0  = data[0+:10] == START0,
-  vd  = c0 | c1,  // vsync deassert
-  va  = c2 | c3;  // vcync assert
+// decode for color
 wire[24-1:0]  rgb, ycbcr;
 DECODER dec [3-1:0] (.clk(clk), .rst(rst), .D(data), .Q(rgb));  // + 1 cycle
 RGB2YCBCR cnv_color ( // + 8 cycle
@@ -88,41 +81,50 @@ RGB2YCBCR cnv_color ( // + 8 cycle
   .oCr(ycbcr[8*0+:8])
 );
 
-integer i;
-reg           pvalid, vsync, frame_mask, rpvalid[2:10-1], rvsync[2:10-1];
-reg [1:0]     pvalid_assert;
+// decode for control
+wire
+  c0  = data[0+:10] == CTLTKN0,
+  c1  = data[0+:10] == CTLTKN1,
+  c2  = data[0+:10] == CTLTKN2,
+  c3  = data[0+:10] == CTLTKN3,
+  s0  = data[0+:10] == START0,
+  vd  = c0 | c1,  // vsync deassert
+  va  = c2 | c3,  // vcync assert
+  pd  = (c0 | c1 | c2 | c3),  // pvalid deassert
+  pa  = s0;       // pvalid assert
+reg           pvalid, vsync, frame_mask, rpvalid, rvsync;
+reg [16-1:0]  rvd, rva, rpd, rpa; // for vsync (de)assert and pvalid (de)assert
 always @(posedge clk) begin
   if(rst) begin
-    {pvalid, vsync, frame_mask, pvalid_assert} <= 0;
+    {pvalid, vsync, frame_mask, rpvalid, rvsync, rvd, rva, rpd, rpa} <= 0;
   end else begin
-    pvalid_assert <= {pvalid_assert[0], s0};
+    rpa <= {rpa[0+:15], pa};
+    rpd <= {rpd[0+:15], pd};
     pvalid  <=
-      (c0 | c1 | c2 | c3) ? 1'b0 :
-      &pvalid_assert      ? 1'b1 : pvalid;
+      &rpd[6-:4]  ? 1'b0 :
+      &rpa[8-:2]  ? 1'b1 : pvalid;
+    rpvalid <= pvalid & frame_mask;
+
+    rva <= {rva[0+:15], va};
+    rvd <= {rvd[0+:15], vd};
     vsync   <=
-      vd ? 1'b0 :
-      va ? 1'b1 : vsync;
+      &rvd[6-:4]  ? 1'b0 :
+      &rva[6-:4]  ? 1'b1 : vsync;
+    rvsync  <= vsync & frame_mask;
 
     // make frame rate half
-    if(!vsync && va) frame_mask <= ~frame_mask; // posedge vsync
-  end
-
-  for (i = 2; i < 10; i = i + 1) begin
-    rpvalid[i] <= i>2 ? rpvalid[i-1] : pvalid & frame_mask;
-    rvsync [i] <= i>2 ? rvsync [i-1] : vsync  & frame_mask;
+    if(!vsync && &rva[6-:4]) frame_mask <= ~frame_mask; // posedge vsync
   end
 end
 
-(* keep = "true" *)
 wire        jvalid;
-(* keep = "true" *)
 wire[8-1:0] jpeg;
 MJPG_ENCODER me (
   .clk(clk),
   .rst(rst),
 
-  .pvalid(rpvalid[9]),
-  .vsync(rvsync[9]),
+  .pvalid(rpvalid),
+  .vsync(rvsync),
   .ycbcr(ycbcr),
 
   .jvalid(jvalid),
