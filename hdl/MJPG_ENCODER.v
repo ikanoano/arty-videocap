@@ -14,6 +14,8 @@ module MJPG_ENCODER (
 );
 
 reg [12-1:0]  width, height, y, x, x_from_valid;  // 0 <= . < 2047
+reg [12-1:0]  width_cand, height_cand;
+reg [4-1:0]   width_cnt,  height_cnt;
 wire[8-1:0]   h_mcu = width[3+:8];
 reg           hvalid, vvalid, start_pulse;
 reg [16-1:0]  hsync_shift;
@@ -23,8 +25,17 @@ always @(posedge clk) begin
   x             <= (rst || hsync) ?  0 : x + pvalid;
   y             <= (rst || vsync) ?  0 : y + (hvalid & hsync);
 
-  width         <= rst ? 12'd0 : (hvalid & hsync ? x : width);
-  height        <= rst ? 12'd0 : (vvalid & vsync ? y : height);
+  if(hvalid & hsync) begin
+    width_cand    <= x;
+    width_cnt     <= x==width_cand ? width_cnt+1 : 0;
+    width         <= width_cnt==4'hF ? width_cand : width;
+  end
+  if(vvalid & vsync) begin
+    height_cand   <= y;
+    height_cnt    <= y==height_cand ? height_cnt+1 : 0;
+    height        <= height_cnt==4'hf ? height_cand : height;
+  end
+
   //$display("y=%d, x=%d", y, x);
 
   hvalid <=
