@@ -83,9 +83,9 @@ RGB2YCBCR cnv_color ( // + 8 cycle
   .iR({1'b0, rgb[8*2+:8]}),
   .iG({1'b0, rgb[8*1+:8]}),
   .iB({1'b0, rgb[8*0+:8]}),
-  .oY (ycbcr[8*0+:8]),
+  .oY (ycbcr[8*2+:8]),
   .oCb(ycbcr[8*1+:8]),
-  .oCr(ycbcr[8*2+:8])
+  .oCr(ycbcr[8*0+:8])
 );
 
 integer i;
