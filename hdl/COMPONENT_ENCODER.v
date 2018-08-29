@@ -211,31 +211,6 @@ function[4-1:0] BITLEN (input [9-1:0] v);
 endfunction
 endmodule
 
-/*
-module RAM #(
-  parameter WIDTH = 24
-) (
-  input   wire            clk,
-
-  input   wire[    8-1:0] addr1,
-  output  reg [WIDTH-1:0] rdata1,
-
-  input   wire[    8-1:0] addr2,
-  output  reg [WIDTH-1:0] rdata2,
-  input   wire            we2,
-  input   wire[WIDTH-1:0] wdata2
-);
-reg [WIDTH-1:0] ram[0:256-1];
-
-always @(posedge clk) begin
-  rdata1  <= ram[addr1];
-  rdata2  <= ram[addr2];
-  if(we2) ram[addr2] <= wdata2;
-end
-
-endmodule
-*/
-
 module DCT_COSTABLE #(
   parameter DCT_IDX = 27,
   parameter SCALE   = 7

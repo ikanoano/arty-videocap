@@ -45,7 +45,7 @@ clk_wiz_0 clocking (          // PLL
 
 // deserializer clock
 clk_wiz_1 clocking_des (      // MMCM
-  .clk_in1_p(tmds_rx_p[3]),   // X MHz
+  .clk_in1_p(tmds_rx_p[3]),   // X MHz,   Diff clock capable pin
   .clk_in1_n(tmds_rx_n[3]),
   .reset(rst_ref),
   .clk_out1(clk1x),           // X MHz,   BUFG
@@ -58,7 +58,7 @@ BUFR #(.BUFR_DIVIDE("5"),.SIM_DEVICE("7SERIES")) bufr_des (
 
 // serializer clock
 clk_wiz_2 clocking_ser (      // MMCM
-  .clk_in1(clk1x),            // X MHz
+  .clk_in1(clk1x),            // X MHz,   No buffer
   .reset(rst_ref),
   .clk_out1(),                // X MHz,   BUFG
   .clk_out2(clk5x_ser_nb),    // 5X MHz,  No buffer
