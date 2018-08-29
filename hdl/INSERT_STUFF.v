@@ -35,6 +35,7 @@ always @(posedge clk) begin
   end
 end
 
+integer i;
 generate genvar gi;
 for (gi = 0; gi < 4; gi = gi + 1) begin
   // TODO: buffer should be SRL
@@ -52,6 +53,7 @@ for (gi = 0; gi < 4; gi = gi + 1) begin
         buffer[waddr] <= {wdata_nostuff[8*gi+7], wdata[8*gi +: 8]};
         if(waddr+1 == raddr) begin
           $display("buffer overflow");
+          for (i = 0; i < 32; i = i + 1) $display("buffer[%d]=0x%x", i, buffer[i]);
           $finish();
         end
       end

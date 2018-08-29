@@ -93,14 +93,14 @@ reg [8-1:0]   e_x_mcu[0:2];
 reg           ereq_ce[0:2];
 initial $readmemh("fh.hex", footer_header, 0, LEN_FH-1);
 always @(posedge clk) begin
-  if(rst) {elen_fh, edata_fh, ereq_master, idx_fh} <= 32'hFF;// FIXME: change me to 0
+  if(rst) {elen_fh, edata_fh, ereq_master, idx_fh} <= 47'hFF;
   else begin
     if(start_pulse) begin // byte alignment
       //$display("byte alignment");
       $write("b");
       elen_fh <= {3'd0, bsrest};
       edata_fh<= 32'hxxxxxxff;
-      idx_fh  <= 8'h0; // change me to 0(in impl) or 2(in sim)
+      idx_fh  <= 8'h2; // change me to 0 to output footer(EOI), though ffplay doesn't need it.
       if(ereq_master) begin
         $display("invalid encoding timing for component");
         $finish();
