@@ -245,42 +245,53 @@ localparam  u = //x
 generate genvar y,x;
   for (y = 0; y < 8; y = y + 1)
   for (x = 0; x < 8; x = x + 1) begin
-    localparam  real    cos1 = COS_EXPR(v,y);
-    localparam  real    cos2 = COS_EXPR(u,x);
-    localparam  integer tmp =
-      cos1 *
-      cos2 *
+    localparam  integer a1    = (2*y+1)*v;
+    localparam  integer b1    = (a1+8)>>4;
+    localparam  real    d1    = (a1-16*b1); // signed integer must be cast alone
+    localparam  real    e1    = d1*PI/16.0;
+    localparam  real    f1    = 1.0
+      - (e1**2 ) / (2)
+      + (e1**4 ) / (4*3*2)
+      - (e1**6 ) / (6*5*4*3*2)
+      + (e1**8 ) / (8*7*6*5*4*3*2)
+      - (e1**10) / (10*9*8*7*6*5*4*3*2)
+      + (e1**12) / (12*11*10*9*8*7*6*5*4*3*2);
+    localparam  real    sign1 = (b1&1) ? -1.0 : 1.0;
+    localparam  real    cos1  = f1 * sign1;
+
+    localparam  integer a2    = (2*x+1)*u;
+    localparam  integer b2    = (a2+8)>>4;
+    localparam  real    d2    = (a2-16*b2); // signed integer must be cast alone
+    localparam  real    e2    = d2*PI/16.0;
+    localparam  real    f2    = 1.0
+      - (e2**2 ) / (2)
+      + (e2**4 ) / (4*3*2)
+      - (e2**6 ) / (6*5*4*3*2)
+      + (e2**8 ) / (8*7*6*5*4*3*2)
+      - (e2**10) / (10*9*8*7*6*5*4*3*2)
+      + (e2**12) / (12*11*10*9*8*7*6*5*4*3*2);
+    localparam  real    sign2 = (b2&1) ? -1.0 : 1.0;
+    localparam  real    cos2  = f2 * sign2;
+
+    localparam  real    coeff =
       ( (|u && |v)  ? 1.0  :
         (|u || |v)  ? 1.0/1.41421356237 :
                       0.5 ) *
-      (1 << SCALE);
-    assign tbl[{y[0+:3], x[0+:3]}] = tmp;
+      (2.0**SCALE);
+    localparam  integer tmp   = cos1 * cos2 * coeff;
+
+    //assign tbl[{y[0+:3], x[0+:3]}] = $signed(tmp2[0+:8]);
+    assign tbl[{y[0+:3], x[0+:3]}] = tmp[0+:8];
   end
 endgenerate
 
 assign o = tbl[{r,c}];
 
 //function[64-1:0] COS_EXPR (input [32-1:0] a, input [32-1:0] b);
-//  COS_EXPR = $realtobits($cos(PI*(2*b+1)*a/16.0));  
+//  COS_EXPR = $realtobits($cos(PI*(2*b+1)*a/16.0));
 // vivado doesn't know what cos is
+// the behavior of functions who return real value is very unstable
 //endfunction
-
-//cos((x-16*floor((x+8)/16))*pi/16)*((-1)^floor((x+8)/16))
-function real COS_EXPR(input integer a, input integer b);
-  COS_EXPR = ((((GETX(a,b)+8)>>4)&1) ? -1.0 : 1.0) * COS((GETX(a,b)-16*((GETX(a,b)+8)>>4))*PI/16.0);
-endfunction
-function real COS (input real a);
-  COS = 1.0
-    - a**2 /(2)
-    + a**4 /(4*3*2)
-    - a**6 /(6*5*4*3*2)
-    + a**8 /(8*7*6*5*4*3*2)
-    - a**10/(10*9*8*7*6*5*4*3*2)
-    + a**12/(12*11*10*9*8*7*6*5*4*3*2);
-endfunction
-function integer GETX(input integer a, input integer b);
-  GETX = (2*b+1)*a;
-endfunction
 
 initial if(DCT_IDX>=36) begin $display("invalid DCT_IDX"); $finish(); end
 endmodule
