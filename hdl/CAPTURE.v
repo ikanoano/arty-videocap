@@ -69,13 +69,16 @@ PASS_THROUGH #(.RX_INV(RX_INV), .TX_INV(TX_INV)) pt (
 );
 
 // decode for color
-wire[24-1:0]  rgb, ycbcr;
+reg [30-1:0]  rdata;
+wire[24-1:0]  rgb, ecrgb, ycbcr;
 DECODER dec [3-1:0] (.clk(clk), .rst(rst), .D(data), .Q(rgb));  // + 1 cycle
+always @(posedge clk) rdata <= data;
+VEC val [3-1:0] (.clk(clk), .enc(rdata), .dec(rgb), .ecdec(ecrgb)); // + 3 cycle
 RGB2YCBCR cnv_color ( // + 8 cycle
   .clk(clk),
-  .iR({1'b0, rgb[8*2+:8]}),
-  .iG({1'b0, rgb[8*1+:8]}),
-  .iB({1'b0, rgb[8*0+:8]}),
+  .iR({1'b0, ecrgb[8*2+:8]}),
+  .iG({1'b0, ecrgb[8*1+:8]}),
+  .iB({1'b0, ecrgb[8*0+:8]}),
   .oY (ycbcr[8*2+:8]),
   .oCb(ycbcr[8*1+:8]),
   .oCr(ycbcr[8*0+:8])
@@ -101,19 +104,19 @@ always @(posedge clk) begin
     rpa <= {rpa[0+:15], pa};
     rpd <= {rpd[0+:15], pd};
     pvalid  <=
-      &rpd[6-:4]  ? 1'b0 :
-      &rpa[8-:2]  ? 1'b1 : pvalid;
+      &rpd[ 9-:4] ? 1'b0 :
+      &rpa[11-:2] ? 1'b1 : pvalid;
     rpvalid <= pvalid & frame_mask;
 
     rva <= {rva[0+:15], va};
     rvd <= {rvd[0+:15], vd};
     vsync   <=
-      &rvd[6-:4]  ? 1'b0^vsync_inv :
-      &rva[6-:4]  ? 1'b1^vsync_inv : vsync;
+      &rvd[ 9-:4] ? 1'b0^vsync_inv :
+      &rva[ 9-:4] ? 1'b1^vsync_inv : vsync;
     rvsync  <= vsync & frame_mask;
 
     // make frame rate half
-    if(!vsync && &rva[6-:4]) frame_mask <= ~frame_mask; // posedge vsync
+    if(!vsync && &rva[9-:4]) frame_mask <= ~frame_mask; // posedge vsync
     vsync_inv <= sw[1];
   end
 end
