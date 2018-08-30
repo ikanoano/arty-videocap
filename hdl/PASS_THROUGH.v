@@ -91,7 +91,7 @@ for (gi = 0; gi < 3; gi = gi + 1) begin
     .kRefClkFrqMHz   (200),       // what is the RefClk frequency
     .kIDLY_TapValuePs(78),        // delay in ps per tap
     .kIDLY_TapWidth  (5),         // number of bits for IDELAYE2 tap counter
-    .kInvert         (RX_INV[gi]) // invert input
+    .kInvert         (1'b0)       // invert input
   ) rx (
     .PixelClk(clk1x_des),
     .SerialClk(clk5x_des),
@@ -121,13 +121,14 @@ IDELAYCTRL idc (
 );
 
 // cross over clock region
+wire[30-1:0]  invmask = {{10{RX_INV[2]}}, {10{RX_INV[1]}}, {10{RX_INV[0]}}};
 wire          full1, empty1, filled1, full2, empty2;
 reg           enqueue, dequeued;
 wire[30-1:0]  ch_g,  ch_ser;
 reg [30-1:0]  rch_des, rch_g, rch_ser;
 reg [40-1:0]  irch_ser;
 
-always @(posedge clk1x_des) rch_des <= ch_des;
+always @(posedge clk1x_des) rch_des <= ch_des ^ invmask;
 always @(posedge clk1x_des) enqueue <= ~filled1;
 ASYNC_FIFO #(.SIZE_SCALE(8), .WIDTH(30), .FILLED_THRESH(2**7)) cdc_fifo1 (
   .rst(rst_des),
