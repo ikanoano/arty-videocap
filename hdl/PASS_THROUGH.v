@@ -17,7 +17,7 @@ module PASS_THROUGH #(
   output  reg [3-1:0]     led1,     // RGB LEDs
   output  reg [3-1:0]     led2,     // RGB LEDs
   output  reg [3-1:0]     led3,     // RGB LEDs
-  output  reg [7:4]       led,      // LEDs LD4-7
+  output  reg [5:4]       led,      // LEDs LD4-5
   input   wire[4-1:0]     btn,
   input   wire[4-1:0]     sw,
 
@@ -199,12 +199,11 @@ localparam[18-1:0]  LEDCNT_TH2  = (1<<20) - (1<<10);
 reg [18-1:0]  ledcnt1=0, ledcnt2=0;
 always @(posedge clk) begin
   ledcnt1 <= ledcnt1+1;
-  led[4]  <= ledcnt1<LEDCNT_TH1 ? 0 : ideready;
-  led[5]  <= ledcnt1<LEDCNT_TH1 ? 0 : locked_des;
+  led[4]  <= ledcnt1<LEDCNT_TH1 ? 0 : locked_des;
 end
 always @(posedge clk1x_des) begin
   ledcnt2 <= ledcnt2+1;
-  led[6]  <= ledcnt2<LEDCNT_TH1 ? 0 : &vld_cb;
+  led[5]  <= ledcnt2<LEDCNT_TH1 ? 0 : &vld_cb;
   led0[2] <= ledcnt2<LEDCNT_TH2 ? 0 : vld_cb[0]; // Blue Channel
   led1[1] <= ledcnt2<LEDCNT_TH2 ? 0 : vld_cb[1]; // Green Channel
   led2[0] <= ledcnt2<LEDCNT_TH2 ? 0 : vld_cb[2]; // Red Channel

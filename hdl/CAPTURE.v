@@ -60,7 +60,7 @@ PASS_THROUGH #(.RX_INV(RX_INV), .TX_INV(TX_INV)) pt (
 
   .led0(led0), .led1(led1),
   .led2(led2), .led3(led3),
-  .led(led), .btn(btn), .sw(sw),
+  .led(led[5:4]), .btn(btn), .sw(sw),
 
   .clk_data(clk),
   .rst_data(rst),
@@ -92,11 +92,11 @@ wire
   va  = c2 | c3,  // vcync assert
   pd  = (c0 | c1 | c2 | c3),  // pvalid deassert
   pa  = s0;       // pvalid assert
-reg           pvalid, vsync, frame_mask, rpvalid, rvsync;
+reg           pvalid, vsync, frame_mask, rpvalid, rvsync, vsync_inv;
 reg [16-1:0]  rvd, rva, rpd, rpa; // for vsync (de)assert and pvalid (de)assert
 always @(posedge clk) begin
   if(rst) begin
-    {pvalid, vsync, frame_mask, rpvalid, rvsync, rvd, rva, rpd, rpa} <= 0;
+    {pvalid, vsync, frame_mask, rpvalid, rvsync, rvd, rva, rpd, rpa, vsync_inv} <= 0;
   end else begin
     rpa <= {rpa[0+:15], pa};
     rpd <= {rpd[0+:15], pd};
@@ -108,14 +108,16 @@ always @(posedge clk) begin
     rva <= {rva[0+:15], va};
     rvd <= {rvd[0+:15], vd};
     vsync   <=
-      &rvd[6-:4]  ? 1'b0 :
-      &rva[6-:4]  ? 1'b1 : vsync;
+      &rvd[6-:4]  ? 1'b0^vsync_inv :
+      &rva[6-:4]  ? 1'b1^vsync_inv : vsync;
     rvsync  <= vsync & frame_mask;
 
     // make frame rate half
     if(!vsync && &rva[6-:4]) frame_mask <= ~frame_mask; // posedge vsync
+    vsync_inv <= sw[1];
   end
 end
+assign  led[7]  = vsync_inv;
 
 wire        jvalid;
 wire[8-1:0] jpeg;
@@ -131,6 +133,14 @@ MJPG_ENCODER me (
   .jpeg(jpeg)
 );
 
+reg         rjvalid, eth_en;
+reg [8-1:0] rjpeg;
+always @(posedge clk) begin
+  eth_en  <= sw[0];
+  rjvalid <= jvalid & eth_en;
+  rjpeg   <= jpeg;
+end
+assign  led[6]  = eth_en;
 
 wire          clk_eth;
 wire          start_send, nibble_valid, nibble_user_data, with_usr_valid;
@@ -138,8 +148,8 @@ wire[3:0]     nibble, with_usr;
 BRIDGE_ENC2ETH be2e (
   .enc_clk(clk),
   .rst(rst),
-  .enqueue(jvalid),
-  .jpeg(jpeg),
+  .enqueue(rjvalid),
+  .jpeg(rjpeg),
 
   .eth_clk(clk_eth),
   .start_send(start_send),
