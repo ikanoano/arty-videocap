@@ -1,0 +1,1 @@
+../ArtyEtherentTX/constraints/arty_ooc.xdc
