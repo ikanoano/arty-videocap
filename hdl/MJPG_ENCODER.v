@@ -94,7 +94,7 @@ localparam
   DCT_RC_Y    = DCT_TH_Y+1, // Request assert Cycle
   DCT_RC_C    = DCT_TH_C+1,
   NOBS_CYCLE  = 8;
-reg [8-1:0]   idx_fh;
+reg [8-1:0]   idx_fh, idx_fh_init=0;
 reg [8-1:0]   footer_header[0:LEN_FH-1];
 reg [6-1:0]   elen_fh;
 reg [32-1:0]  edata_fh;
@@ -111,7 +111,7 @@ always @(posedge clk) begin
       $write("b");
       elen_fh <= {3'd0, bsrest};
       edata_fh<= 32'hxxxxxxff;
-      idx_fh  <= 8'h2; // change me to 0 to output footer(EOI), though ffplay doesn't need it.
+      idx_fh  <= idx_fh_init; // set 0 to output footer(EOI)
       if(ereq_master) begin
         $display("invalid encoding timing for component");
         $finish();

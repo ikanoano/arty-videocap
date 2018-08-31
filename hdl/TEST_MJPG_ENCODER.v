@@ -19,6 +19,7 @@ initial begin
   rst <= 0;
   repeat(10) @(posedge clk);
   if(1) begin
+    me.idx_fh_init  <= 2; // not to output EOI
     // oshietyau
     me.width        <= 640;
     me.width_cand   <= 640;
