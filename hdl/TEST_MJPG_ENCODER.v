@@ -20,8 +20,10 @@ initial begin
   repeat(10) @(posedge clk);
   if(1) begin
     // oshietyau
-    //me.width  <= 640;
-    me.height <= 360;
+    me.width        <= 640;
+    me.width_cand   <= 640;
+    me.height       <= 360;
+    me.height_cand  <= 360;
     me.footer_header[143] <= 360 >> 8;
     me.footer_header[144] <= 360 & 8'hff;
     me.footer_header[145] <= 640 >> 8;
