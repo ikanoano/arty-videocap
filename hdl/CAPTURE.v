@@ -120,7 +120,6 @@ always @(posedge clk) begin
     vsync_inv <= sw[1];
   end
 end
-assign  led[7]  = vsync_inv;
 
 wire        jvalid;
 wire[8-1:0] jpeg;
@@ -143,7 +142,6 @@ always @(posedge clk) begin
   rjvalid <= jvalid & eth_en;
   rjpeg   <= jpeg;
 end
-assign  led[6]  = eth_en;
 
 wire          clk_eth;
 wire          start_send, nibble_valid, nibble_user_data, with_usr_valid;
@@ -188,6 +186,16 @@ ethernet_test et (
   .with_usr(with_usr),
   .with_usr_valid(with_usr_valid)
 );
+
+// indicator
+localparam[18-1:0]  LEDCNT_TH1  = (1<<18) - (1<<13);
+reg [18-1:0]  ledcnt=0;
+reg [1:0]     rled;
+always @(posedge clk) begin
+  ledcnt  <= ledcnt+1;
+  rled    <= ledcnt<LEDCNT_TH1 ? 0 : {vsync_inv, eth_en};
+end
+assign  led[7:6]  = rled;
 
 // debug
 (* keep = "true" *)

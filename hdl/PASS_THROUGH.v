@@ -194,8 +194,8 @@ assign  valid_data= dequeued;
 assign  data      = rch_g;
 
 // indicator
-localparam[18-1:0]  LEDCNT_TH1  = (1<<20) - (1<<13);
-localparam[18-1:0]  LEDCNT_TH2  = (1<<20) - (1<<10);
+localparam[18-1:0]  LEDCNT_TH1  = (1<<18) - (1<<13);
+localparam[18-1:0]  LEDCNT_TH2  = (1<<18) - (1<<10);
 reg [18-1:0]  ledcnt1=0, ledcnt2=0;
 always @(posedge clk) begin
   ledcnt1 <= ledcnt1+1;
