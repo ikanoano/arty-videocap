@@ -98,13 +98,13 @@ reg [8-1:0]   idx_fh;
 reg [8-1:0]   footer_header[0:LEN_FH-1];
 reg [6-1:0]   elen_fh;
 reg [32-1:0]  edata_fh;
-reg           ereq_master;
+reg           ereq_master, lastout;
 reg [6-1:0]   ereq_cnt;
 reg [8-1:0]   e_x_mcu[0:2];
 reg           ereq_ce[0:2];
 initial $readmemh("fh.hex", footer_header, 0, LEN_FH-1);
 always @(posedge clk) begin
-  if(rst) {elen_fh, edata_fh, ereq_master, idx_fh} <= 47'hFF;
+  if(rst) {elen_fh, edata_fh, ereq_master, lastout, idx_fh} <= 48'hFF;
   else begin
     if(start_pulse) begin // byte alignment
       //$display("byte alignment");
@@ -116,6 +116,8 @@ always @(posedge clk) begin
         $display("invalid encoding timing for component");
         $finish();
       end
+      ereq_master <= 0;
+      lastout     <= 0;
     end else if(idx_fh<LEN_FH) begin // output footer and header
       //$display("start to output footer and header");
       if(idx_fh==0) $write("f"); else $write("h");
@@ -128,12 +130,14 @@ always @(posedge clk) begin
         8'd145: footer_header[idx_fh] <= {5'd0, width[8+:3]};
         8'd146: footer_header[idx_fh] <= width[0+:8];
       endcase
+      ereq_master <= 0;
+      lastout     <= 0;
     end else begin  // output entropy-coded image data
       elen_fh <= 0;
       edata_fh<= 32'hxxxxxxxx;
       idx_fh  <= idx_fh;
 
-      if(0<y && y<height && y[0+:3]==0) begin // FIXME: last line cannot be output
+      if((0<y && y<height && y[0+:3]==0) || (y==height && !lastout)) begin
         //$display("start to output body");
         if(!ereq_master) $write("<");
         ereq_master <= 1;
@@ -141,6 +145,7 @@ always @(posedge clk) begin
         if(ereq_master) $write(">");
         ereq_master <= 0;
       end
+      lastout     <= y==height;
     end
 
   end
@@ -245,6 +250,12 @@ reg [12-1:0]  dbg_width, dbg_height;  // 0 <= . < 2047
 always @(posedge clk) begin
   dbg_width     <= (hvalid & hsync) ? x : dbg_width;
   dbg_height    <= (vvalid & vsync) ? y : dbg_height;
+end
+
+// assertion
+initial if(DCT_RC_Y+DCT_RC_C*2+NOBS_CYCLE >= 63) begin
+  $display("DCT_TH is too big");
+  $finish();
 end
 
 endmodule
