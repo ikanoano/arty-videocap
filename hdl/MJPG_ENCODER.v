@@ -89,8 +89,8 @@ INSERT_STUFF is (
 // generate bitstream
 localparam
   LEN_FH      = 171,
-  DCT_TH_Y    = 4,//28,
-  DCT_TH_C    = 2,//6,
+  DCT_TH_Y    = 28,
+  DCT_TH_C    = 6,
   DCT_RC_Y    = DCT_TH_Y+1, // Request assert Cycle
   DCT_RC_C    = DCT_TH_C+1,
   NOBS_CYCLE  = 8;
