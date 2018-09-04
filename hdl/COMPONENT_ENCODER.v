@@ -1,6 +1,7 @@
 `default_nettype none
 `timescale 1 ps / 1 ps
 
+// see main.cpp in bmp2jpeg
 module COMPONENT_ENCODER #(
   parameter IS_Y      = 1,
   parameter DCT_TH    = 28

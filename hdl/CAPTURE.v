@@ -101,6 +101,7 @@ always @(posedge clk) begin
   if(rst) begin
     {pvalid, vsync, frame_mask, rpvalid, rvsync, rvd, rva, rpd, rpa, vsync_inv} <= 0;
   end else begin
+    // robust pixel valid / vsync detection
     rpa <= {rpa[0+:15], pa};
     rpd <= {rpd[0+:15], pd};
     pvalid  <=
@@ -115,12 +116,13 @@ always @(posedge clk) begin
       &rva[ 9-:4] ? 1'b1^vsync_inv : vsync;
     rvsync  <= vsync & frame_mask;
 
-    // make frame rate half
+    // half frame rate
     if(!vsync && &rva[9-:4]) frame_mask <= ~frame_mask; // posedge vsync
     vsync_inv <= sw[1];
   end
 end
 
+// encode frames to jpegs -> concatinated jpegs will be mjpeg
 wire        jvalid;
 wire[8-1:0] jpeg;
 MJPG_ENCODER me (
@@ -143,6 +145,7 @@ always @(posedge clk) begin
   rjpeg   <= jpeg;
 end
 
+// buffer
 wire          clk_eth;
 wire          start_send, nibble_valid, nibble_user_data, with_usr_valid;
 wire[3:0]     nibble, with_usr;
@@ -161,6 +164,7 @@ BRIDGE_ENC2ETH be2e (
   .with_usr_valid(with_usr_valid)
 );
 
+// send mjpeg
 ethernet_test et (
   .CLK100MHZ(clk100),
 

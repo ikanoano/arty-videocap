@@ -142,6 +142,7 @@ always @(posedge clk) begin
         if(!ereq_master) $write("<");
         ereq_master <= 1;
       end else if(e_x_mcu[2] >= h_mcu) begin
+        // deassert ereq when last mcu is output
         if(ereq_master) $write(">");
         ereq_master <= 0;
       end
@@ -184,6 +185,7 @@ always @(posedge clk) rvsync  <= vsync;
 
 wire[6-1:0]   elen_ce[0:2];
 wire[32-1:0]  edata_ce[0:2];
+// encoder for Y component
 COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(DCT_TH_Y)) yenc (
   .clk(clk),
   .rst(rst),
@@ -202,6 +204,7 @@ COMPONENT_ENCODER #(.IS_Y(1), .DCT_TH(DCT_TH_Y)) yenc (
   .edata(edata_ce[0])
 );
 
+// encoder for Cr and Cb component
 COMPONENT_ENCODER #(.IS_Y(0), .DCT_TH(DCT_TH_C)) cenc[1:0] (
   .clk(clk),
   .rst(rst),
@@ -220,6 +223,7 @@ COMPONENT_ENCODER #(.IS_Y(0), .DCT_TH(DCT_TH_C)) cenc[1:0] (
   .edata  ({edata_ce[2],edata_ce[1]})
 );
 
+// not an arbiter
 wire[4-1:0]   evalid = {|elen_fh, |elen_ce[2], |elen_ce[1], |elen_ce[0]};
 reg [6-1:0]   pre_elen;
 reg [32-1:0]  pre_edata[0:3];
@@ -236,7 +240,7 @@ always @(posedge clk) begin
 
   if(!rst) case (evalid)
     4'b0000: begin end
-    4'b1000,4'b0100,4'b0010,4'b0001: begin end//$write("%d", $clog2(evalid));
+    4'b1000,4'b0100,4'b0010,4'b0001: begin end
     default : begin
       $display("bitstream collision detected: %b", evalid);
       $finish();

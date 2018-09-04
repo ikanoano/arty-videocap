@@ -1,6 +1,7 @@
 `default_nettype none
 `timescale 1 ps / 1 ps
 
+// make variable length data stream to be 8 bit aligned
 module BITSTREAM (
   input   wire          clk,
   input   wire          rst,

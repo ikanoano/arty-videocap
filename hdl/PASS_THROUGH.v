@@ -68,7 +68,7 @@ BUFIO bufio_ser (.I(clk5x_ser_nb), .O(clk5x_ser));  // buffer for high freq
 BUFR #(.BUFR_DIVIDE("5"),.SIM_DEVICE("7SERIES")) bufr_ser (
   .I(clk5x_ser_nb), .O(clk1x_ser), .CE(1'b1), .CLR(1'b0));
 
-// reset
+// resets
 SASRESET sas_idly (
   .clk(clk), .sync_rst_src(1'b0),    .async_rst_src(~locked_ref), .rst(rst_idly));
 SASRESET sas_ref (
@@ -112,13 +112,6 @@ for (gi = 0; gi < 3; gi = gi + 1) begin
   );
 end
 endgenerate
-// IDELAY calibrator
-wire        ideready;
-IDELAYCTRL idc (
-  .RDY(ideready),
-  .REFCLK(clk),
-  .RST(rst_idly)
-);
 
 // cross over clock region
 wire[30-1:0]  invmask = {{10{RX_INV[2]}}, {10{RX_INV[1]}}, {10{RX_INV[0]}}};
@@ -128,6 +121,7 @@ wire[30-1:0]  ch_g,  ch_ser;
 reg [30-1:0]  rch_des, rch_g, rch_ser;
 reg [40-1:0]  irch_ser;
 
+// clk1x_des -> clk1x
 always @(posedge clk1x_des) rch_des <= ch_des ^ invmask;
 always @(posedge clk1x_des) enqueue <= ~filled1;
 ASYNC_FIFO #(.SIZE_SCALE(8), .WIDTH(30), .FILLED_THRESH(2**7)) cdc_fifo1 (
@@ -145,6 +139,8 @@ ASYNC_FIFO #(.SIZE_SCALE(8), .WIDTH(30), .FILLED_THRESH(2**7)) cdc_fifo1 (
   .dequeue(~empty1),
   .rdata(ch_g)
 );
+
+// clk1x -> clk1x_ser
 always @(posedge clk1x) rch_g <= ch_g;
 always @(posedge clk1x) dequeued <= ~empty1;
 ASYNC_FIFO #(.SIZE_SCALE(8), .WIDTH(30), .FILLED_THRESH(2**7)) cdc_fifo2 (
@@ -162,6 +158,8 @@ ASYNC_FIFO #(.SIZE_SCALE(8), .WIDTH(30), .FILLED_THRESH(2**7)) cdc_fifo2 (
   .dequeue(~empty2),
   .rdata(ch_ser)
 );
+
+// invert data
 always @(posedge clk1x_ser) begin
   rch_ser   <= ch_ser;
   irch_ser  <= {10'b0000011111, rch_ser} ^ {
@@ -187,11 +185,19 @@ OBUFDS #(.IOSTANDARD("TMDS_33")) tmdsbuf [4-1:0] (
   .I(serialized)
 );
 
-// output
+// sniff
 assign  clk_data  = clk1x;
 assign  rst_data  = rst_g;
 assign  valid_data= dequeued;
 assign  data      = rch_g;
+
+// IDELAY calibrator
+wire        ideready;
+IDELAYCTRL idc (
+  .RDY(ideready),
+  .REFCLK(clk),
+  .RST(rst_idly)
+);
 
 // indicator
 localparam[18-1:0]  LEDCNT_TH1  = (1<<18) - (1<<13);

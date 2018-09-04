@@ -23,7 +23,7 @@ reg [9-1:0] tmp[0:4-1];
 
 assign      valid = rst ? 0 : (ready4[roffset] || stuff);
 
-// insert stuff zero byte
+// insert stuff zero byte if data is 8'hff and no nostuff flag
 assign  rdata = stuff ? zero : tmp[roffset][0+:8];
 always @(posedge clk) begin
   if(rst) begin
@@ -38,7 +38,7 @@ end
 integer i;
 generate genvar gi;
 for (gi = 0; gi < 4; gi = gi + 1) begin
-  // TODO: buffer should be SRL
+  (* ram_style = "distributed" *)
   reg [9-1:0] buffer[0:32-1];  //ring buffer
   reg [5-1:0] waddr;
   reg [5-1:0] raddr;
